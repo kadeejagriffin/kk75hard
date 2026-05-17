@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>my 75 hard k&k 🌸</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:#1A1220;-webkit-font-smoothing:antialiased}
+input,button,textarea{font-family:'DM Sans',sans-serif}
+button{cursor:pointer;border:none;background:none}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:#F4ADCA;border-radius:10px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp 0.3s ease both}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect} = React;
+
+// ── storage ──────────────────────────────────────────────────────────
+const SK = 'kk75_v1';
+const loadAll = () => { try{return JSON.parse(localStorage.getItem(SK))||{users:{},groups:{}}}catch{return{users:{},groups:{}}} };
+const saveAll = d => { try{localStorage.setItem(SK,JSON.stringify(d))}catch{} };
+
+// ── constants ────────────────────────────────────────────────────────
+const COLORS=[
+  {id:'rose',name:'rose 🌹',c:'#B5365F',l:'#FDF0F5',m:'#F4ADCA',d:'bold, passionate, unstoppable'},
+  {id:'coral',name:'coral 🔥',c:'#CC4428',l:'#FFF2EF',m:'#FFBCAF',d:'fierce, warm, energized'},
+  {id:'lavender',name:'lavender 💜',c:'#6B44CC',l:'#F3EEFF',m:'#CDB8FF',d:'calm, intentional, spiritual'},
+  {id:'sky',name:'sky 🌊',c:'#1870BB',l:'#EEF7FF',m:'#A8D8FF',d:'free, clear-minded, fresh'},
+  {id:'sage',name:'sage 🌿',c:'#1E6E44',l:'#EDFBF3',m:'#A8ECC8',d:'grounded, growing, steady'},
+  {id:'amber',name:'amber ✨',c:'#9A5C00',l:'#FFFBEF',m:'#FFE08A',d:'radiant, joyful, magnetic'},
+];
+const EX_HABITS=[
+  {id:'h1',text:'journaling',cat:'mindset'},{id:'h2',text:'meditation',cat:'mindset'},
+  {id:'h3',text:'walk outside',cat:'mindset'},{id:'h4',text:'yoga',cat:'movement'},
+  {id:'h5',text:'workout',cat:'movement'},{id:'h6',text:'skincare routine',cat:'self care'},
+  {id:'h7',text:'read 10 pages',cat:'reading'},{id:'h8',text:'drink 64oz water',cat:'wellness'},
+  {id:'h9',text:'no alcohol',cat:'wellness'},{id:'h10',text:'cold shower',cat:'wellness'},
+  {id:'h11',text:'gratitude list',cat:'mindset'},{id:'h12',text:'meal prep',cat:'wellness'},
+];
+const EX_GOALS=['daily mindset work','build a consistent routine','get stronger','read more books','reduce screen time','practice self care','set clear boundaries','improve my diet'];
+const DEF_MEDIA=[
+  {day:'Mon',rule:'no social media',emoji:'📴'},{day:'Tue',rule:'no TV',emoji:'📺'},
+  {day:'Wed',rule:'no YouTube',emoji:'🎬'},{day:'Thu',rule:'no music',emoji:'🎵'},
+  {day:'Fri',rule:'free day',emoji:'✅'},{day:'Sat',rule:'no news',emoji:'📰'},
+  {day:'Sun',rule:'full reset',emoji:'🌙'},
+];
+const MILESTONES=[
+  {day:1,emoji:'🌱',title:'first step!',msg:"day one. you actually started. that's everything."},
+  {day:3,emoji:'🔥',title:'3 days strong!',msg:"three days in a row. you're building something real."},
+  {day:7,emoji:'⭐',title:'one full week!',msg:"a whole week of showing up. let's gooo!"},
+  {day:14,emoji:'✨',title:'two weeks!',msg:'fourteen days. this is becoming who you are.'},
+  {day:21,emoji:'💎',title:'21 days locked!',msg:"21 days makes a habit. it's yours now."},
+  {day:30,emoji:'🏆',title:'thirty days!',msg:'a whole month. you are not the same person you were.'},
+  {day:50,emoji:'🌟',title:'fifty days!',msg:'the finish line is closer than the start.'},
+  {day:75,emoji:'👑',title:'you did it!!!',msg:'75 days. you showed up every single day.'},
+];
+const AFFIRMATIONS=["you're doing amazing 🌸","so proud of you!! 🔥","keep going babe ✨","this is your season 👑","you showed up — that's everything 💪","look at you go!! 🎉","consistency is your superpower 💎","i see you putting in the work 🌷"];
+const TODAY_DAY=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()];
+const CAT_STYLE={
+  mindset:{bg:'#FDF0F5',tx:'#B5365F',br:'#F4ADCA'},
+  movement:{bg:'#EEF7FF',tx:'#1870BB',br:'#A8D8FF'},
+  'self care':{bg:'#EDFBF3',tx:'#1E6E44',br:'#A8ECC8'},
+  reading:{bg:'#FFFBEF',tx:'#9A5C00',br:'#FFE08A'},
+  wellness:{bg:'#EDFBF3',tx:'#1E6E44',br:'#A8ECC8'},
+  custom:{bg:'#FDF0F5',tx:'#B5365F',br:'#F4ADCA'},
+  'no media':{bg:'#F3EEFF',tx:'#6B44CC',br:'#CDB8FF'},
+};
+
+// ── helpers ───────────────────────────────────────────────────────────
+const Btn = ({label,onClick,disabled,color,outline,full,style:s={}}) => {
+  const bg = outline?'white':disabled?'#E0D0D8':(color||'#B5365F');
+  const cl = outline?(color||'#B5365F'):'#fff';
+  const br = outline?`2px solid ${color||'#B5365F'}`:'none';
+  return <button onClick={!disabled?onClick:undefined} style={{padding:'12px 16px',borderRadius:'12px',background:bg,color:cl,fontWeight:'900',fontSize:'14px',border:br,cursor:disabled?'not-allowed':'pointer',width:full?'100%':'auto',opacity:disabled?0.6:1,...s}}>{label}</button>;
+};
+const Input = ({value,onChange,onEnter,placeholder,style:s={},type='text',rows}) => {
+  const base={width:'100%',padding:'11px 14px',borderRadius:'11px',border:'1.5px solid rgba(180,140,165,0.35)',fontSize:'14px',outline:'none',color:'#1A1220',fontFamily:'DM Sans,sans-serif',...s};
+  return rows
+    ? <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows} style={{...base,resize:'none',lineHeight:1.6}}/>
+    : <input value={value} onChange={e=>onChange(e.target.value)} onKeyDown={e=>e.key==='Enter'&&onEnter&&onEnter()} placeholder={placeholder} type={type} style={base}/>;
+};
+
+// ── AUTH ──────────────────────────────────────────────────────────────
+function Auth({onLogin}){
+  const [name,setName]=useState('');
+  const [pin,setPin]=useState('');
+  const [err,setErr]=useState('');
+  const go=()=>{
+    if(!name.trim()){setErr('what do we call you? 🌸');return}
+    if(pin.length<4){setErr('PIN needs 4 digits 🔒');return}
+    if(!onLogin(name.trim().toLowerCase(),pin))setErr('wrong PIN babe 💅');
+  };
+  return(
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#fff',padding:'2rem'}}>
+      <div className="fu" style={{textAlign:'center',marginBottom:'2rem'}}>
+        <div style={{fontSize:'52px',marginBottom:'8px'}}>🌸</div>
+        <h1 style={{fontFamily:'Playfair Display,serif',fontSize:'34px',color:'#B5365F',marginBottom:'6px',letterSpacing:'-0.5px'}}>my 75 hard k&k</h1>
+        <p style={{color:'#A898B0',fontSize:'14px'}}>your intentional challenge, together</p>
+      </div>
+      <div className="fu" style={{background:'white',borderRadius:'22px',padding:'1.75rem',width:'100%',maxWidth:'360px',border:'1px solid rgba(181,54,95,0.12)',boxShadow:'0 4px 40px rgba(181,54,95,0.08)'}}>
+        <p style={{fontSize:'12px',color:'#A898B0',marginBottom:'1.25rem',textAlign:'center',lineHeight:1.6}}>new here? enter your name + create a PIN.<br/>coming back? same name + PIN.</p>
+        <label style={{fontSize:'11px',fontWeight:'700',color:'#6B5870',textTransform:'uppercase',letterSpacing:'0.8px',display:'block',marginBottom:'5px'}}>your name</label>
+        <Input value={name} onChange={v=>{setName(v);setErr('')}} onEnter={go} placeholder="deej, sis, etc..." style={{marginBottom:'12px'}}/>
+        <label style={{fontSize:'11px',fontWeight:'700',color:'#6B5870',textTransform:'uppercase',letterSpacing:'0.8px',display:'block',marginBottom:'5px'}}>4-digit PIN</label>
+        <Input value={pin} onChange={v=>{setPin(v.replace(/\D/g,'').slice(0,4));setErr('')}} onEnter={go} placeholder="• • • •" type="password" style={{fontSize:'20px',letterSpacing:'8px',textAlign:'center',marginBottom:'14px'}}/>
+        {err&&<div style={{background:'#FDF0F5',border:'1px solid #F4ADCA',borderRadius:'9px',padding:'9px 13px',marginBottom:'12px',fontSize:'13px',color:'#B5365F',textAlign:'center'}}>{err}</div>}
+        <Btn label="let's go 🔥" onClick={go} full color="#B5365F"/>
+      </div>
+      <p style={{marginTop:'1.5rem',fontSize:'12px',color:'#A898B0'}}>75 days of choosing yourself 🌷</p>
+    </div>
+  );
+}
+
+// ── ONBOARDING ────────────────────────────────────────────────────────
+function Onboarding({username,onComplete}){
+  const [step,setStep]=useState(1);
+  const [col,setCol]=useState(COLORS[0]);
+  const [days,setDays]=useState(75);
+  const [why,setWhy]=useState('');
+  const [habits,setHabits]=useState([]);
+  const [nh,setNh]=useState('');
+  const [goals,setGoals]=useState([]);
+  const [ng,setNg]=useState('');
+  const [wMedia,setWMedia]=useState(null);
+  const [media,setMedia]=useState(DEF_MEDIA);
+  const pct=(step/7)*100;
+  const addH=()=>{if(!nh.trim())return;setHabits(p=>[...p,{id:'c'+Date.now(),text:nh.trim(),cat:'custom'}]);setNh('');};
+  const addG=()=>{if(!ng.trim())return;setGoals(p=>[...p,ng.trim()]);setNg('');};
+  const finish=()=>onComplete({
+    color:col.c,color_light:col.l,total_days:days,why,
+    tasks:{daily:habits.map(h=>({id:h.id,text:h.text,category:h.cat})),weekly:[{id:'w1',text:'check in on my goals',category:'growth'},{id:'w2',text:'plan next week',category:'growth'}],general:[]},
+    goals:goals.map((g,i)=>({id:'g'+i,title:g,desc:''})),
+    media_rules:wMedia?media:[],
+  });
+  const Back=({n})=><Btn label="back" onClick={()=>setStep(n)} outline color={col.c} style={{flex:1,padding:'11px'}}/>;
+  const Next=({label,action,disabled})=><Btn label={label} onClick={action} disabled={disabled} color={col.c} style={{flex:2,padding:'11px'}}/>;
+  return(
+    <div style={{minHeight:'100vh',background:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
+      <div style={{width:'100%',maxWidth:'400px'}}>
+        <div style={{marginBottom:'1.5rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:'5px'}}>
+            <span style={{fontSize:'11px',fontWeight:'700',color:col.c,textTransform:'uppercase',letterSpacing:'1px'}}>step {step} of 7</span>
+            <span style={{fontSize:'11px',color:'#A898B0'}}>{Math.round(pct)}%</span>
+          </div>
+          <div style={{height:'4px',background:'#F0E8ED',borderRadius:'4px'}}><div style={{height:'100%',width:`${pct}%`,background:col.c,borderRadius:'4px',transition:'width 0.4s'}}/></div>
+        </div>
+
+        {step===1&&<div className="fu">
+          <div style={{textAlign:'center',marginBottom:'1.5rem'}}>
+            <div style={{fontSize:'44px',marginBottom:'8px'}}>🌸</div>
+            <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'26px',color:'#1A1220',marginBottom:'6px'}}>hey {username}! 👋</h2>
+            <p style={{color:'#6B5870',fontSize:'14px',lineHeight:1.6}}>let's build YOUR challenge from scratch.<br/>fully yours. fully intentional.</p>
+          </div>
+          <div style={{background:'#FDF0F5',border:'1px solid #F4ADCA',borderRadius:'13px',padding:'13px 15px',marginBottom:'1.25rem'}}>
+            <div style={{fontSize:'10px',fontWeight:'700',color:'#B5365F',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px'}}>💡 we'll set up</div>
+            <div style={{fontSize:'12px',color:'#6B5870',lineHeight:1.9}}>• your signature color • challenge length<br/>• your WHY • daily habits • goals<br/>• media rules (optional)</div>
+          </div>
+          <Btn label="let's build it 🔥" onClick={()=>setStep(2)} full color="#B5365F"/>
+        </div>}
+
+        {step===2&&<div className="fu">
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'4px'}}>pick your vibe 🎨</h2>
+          <p style={{color:'#A898B0',fontSize:'12px',marginBottom:'1.25rem'}}>your signature color throughout the app</p>
+          <div style={{display:'flex',flexDirection:'column',gap:'7px',marginBottom:'1.25rem'}}>
+            {COLORS.map(x=>(
+              <div key={x.id} onClick={()=>setCol(x)} style={{display:'flex',alignItems:'center',gap:'11px',padding:'11px 13px',borderRadius:'13px',border:`2px solid ${col.id===x.id?x.c:'transparent'}`,background:col.id===x.id?x.l:'#F9F5F7',cursor:'pointer',transition:'all 0.15s'}}>
+                <div style={{width:'30px',height:'30px',borderRadius:'50%',background:x.c,flexShrink:0}}/>
+                <div style={{flex:1}}><div style={{fontSize:'13px',fontWeight:'700',color:x.c}}>{x.name}</div><div style={{fontSize:'10px',color:'#A898B0'}}>{x.d}</div></div>
+                <div style={{width:'18px',height:'18px',borderRadius:'50%',background:col.id===x.id?x.c:'white',border:`2px solid ${col.id===x.id?x.c:'#ddd'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'white',fontWeight:'900'}}>{col.id===x.id&&'✓'}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:'10px'}}><Back n={1}/><Next label="that's me →" action={()=>setStep(3)}/></div>
+        </div>}
+
+        {step===3&&<div className="fu">
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'4px'}}>how long? ⏱️</h2>
+          <p style={{color:'#A898B0',fontSize:'12px',marginBottom:'1.25rem'}}>classic is 75 days — make it yours</p>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'9px',marginBottom:'1.25rem'}}>
+            {[[30,'a solid start'],[60,'build real habits'],[75,'the classic'],[100,'go all in']].map(([d,desc])=>(
+              <div key={d} onClick={()=>setDays(d)} style={{padding:'14px',borderRadius:'13px',textAlign:'center',cursor:'pointer',border:`2px solid ${days===d?col.c:'transparent'}`,background:days===d?col.l:'#F9F5F7',transition:'all 0.15s'}}>
+                <div style={{fontSize:'18px',fontWeight:'900',color:days===d?col.c:'#1A1220'}}>{d} days</div>
+                <div style={{fontSize:'10px',color:'#A898B0',marginTop:'2px'}}>{desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:'10px'}}><Back n={2}/><Next label={`${days} days →`} action={()=>setStep(4)}/></div>
+        </div>}
+
+        {step===4&&<div className="fu">
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'4px'}}>what's your WHY? 💜</h2>
+          <p style={{color:'#A898B0',fontSize:'12px',marginBottom:'10px'}}>come back here on the hard days</p>
+          <div style={{background:col.l,border:`1px solid ${col.m}`,borderRadius:'11px',padding:'11px 13px',marginBottom:'10px'}}>
+            <div style={{fontSize:'10px',fontWeight:'700',color:col.c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'3px'}}>example</div>
+            <div style={{fontSize:'11px',color:'#6B5870',fontStyle:'italic',lineHeight:1.6}}>"I want to quiet my brain. I want more time to be intentional — to reclaim my mind and my time."</div>
+          </div>
+          <Input value={why} onChange={setWhy} placeholder="write your why here..." rows={4} style={{marginBottom:'1.25rem',border:`1.5px solid ${why?col.c:'rgba(180,140,165,0.35)'}`}}/>
+          <div style={{display:'flex',gap:'10px'}}><Back n={3}/><Next label="that's my why →" action={()=>setStep(5)} disabled={!why.trim()}/></div>
+        </div>}
+
+        {step===5&&<div className="fu">
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'4px'}}>daily habits 🌱</h2>
+          <p style={{color:'#A898B0',fontSize:'12px',marginBottom:'1rem'}}>tap examples or write your own</p>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'11px'}}>
+            {EX_HABITS.map(h=>{const s=habits.find(x=>x.id===h.id);return(
+              <button key={h.id} onClick={()=>setHabits(p=>s?p.filter(x=>x.id!==h.id):[...p,{...h}])} style={{padding:'6px 11px',borderRadius:'20px',fontSize:'12px',fontWeight:'700',border:`2px solid ${s?col.c:'#E0D0D8'}`,background:s?col.l:'white',color:s?col.c:'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{s?'✓ ':'+ '}{h.text}</button>
+            );})}
+          </div>
+          <div style={{display:'flex',gap:'7px',marginBottom:'11px'}}>
+            <Input value={nh} onChange={setNh} onEnter={addH} placeholder="add your own..." style={{border:`1.5px solid ${nh?col.c:'rgba(180,140,165,0.35)'}`}}/>
+            <button onClick={addH} style={{padding:'0 13px',borderRadius:'10px',background:col.c,color:'white',fontWeight:'900',fontSize:'13px',border:'none',flexShrink:0}}>add</button>
+          </div>
+          {habits.length>0&&<div style={{background:col.l,border:`1px solid ${col.m}`,borderRadius:'11px',padding:'9px 13px',marginBottom:'11px'}}>
+            <div style={{fontSize:'10px',fontWeight:'700',color:col.c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px'}}>your habits ({habits.length})</div>
+            {habits.map(h=><div key={h.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'3px 0'}}>
+              <span style={{fontSize:'12px',color:'#1A1220'}}>• {h.text}</span>
+              <button onClick={()=>setHabits(p=>p.filter(x=>x.id!==h.id))} style={{color:'#A898B0',fontSize:'12px',background:'none',border:'none',cursor:'pointer'}}>✕</button>
+            </div>)}
+          </div>}
+          <div style={{display:'flex',gap:'10px'}}><Back n={4}/><Next label={habits.length>0?`${habits.length} habits locked →`:'pick at least one'} action={()=>setStep(6)} disabled={habits.length===0}/></div>
+        </div>}
+
+        {step===6&&<div className="fu">
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'4px'}}>your goals 🎯</h2>
+          <p style={{color:'#A898B0',fontSize:'12px',marginBottom:'1rem'}}>the bigger picture behind your habits</p>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'11px'}}>
+            {EX_GOALS.map(g=>{const s=goals.includes(g);return(
+              <button key={g} onClick={()=>setGoals(p=>s?p.filter(x=>x!==g):[...p,g])} style={{padding:'6px 11px',borderRadius:'20px',fontSize:'12px',fontWeight:'700',border:`2px solid ${s?col.c:'#E0D0D8'}`,background:s?col.l:'white',color:s?col.c:'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{s?'✓ ':'+ '}{g}</button>
+            );})}
+          </div>
+          <div style={{display:'flex',gap:'7px',marginBottom:'11px'}}>
+            <Input value={ng} onChange={setNg} onEnter={addG} placeholder="add your own goal..." style={{border:`1.5px solid ${ng?col.c:'rgba(180,140,165,0.35)'}`}}/>
+            <button onClick={addG} style={{padding:'0 13px',borderRadius:'10px',background:col.c,color:'white',fontWeight:'900',fontSize:'13px',border:'none',flexShrink:0}}>add</button>
+          </div>
+          <div style={{background:'#F9F5F7',borderRadius:'13px',padding:'13px',marginBottom:'11px'}}>
+            <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220',marginBottom:'7px'}}>want a no-media challenge? 📵</div>
+            <div style={{display:'flex',gap:'7px'}}>
+              <button onClick={()=>setWMedia(true)} style={{flex:1,padding:'8px',borderRadius:'9px',border:`2px solid ${wMedia===true?col.c:'#E0D0D8'}`,background:wMedia===true?col.l:'white',color:wMedia===true?col.c:'#6B5870',fontWeight:'700',fontSize:'12px',cursor:'pointer'}}>yes! 📴</button>
+              <button onClick={()=>setWMedia(false)} style={{flex:1,padding:'8px',borderRadius:'9px',border:`2px solid ${wMedia===false?col.c:'#E0D0D8'}`,background:wMedia===false?col.l:'white',color:wMedia===false?col.c:'#6B5870',fontWeight:'700',fontSize:'12px',cursor:'pointer'}}>not for me</button>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:'10px'}}><Back n={5}/><Next label={wMedia?'set media rules →':"i'm ready! 🔥"} action={wMedia?()=>setStep(7):finish} disabled={goals.length===0||wMedia===null}/></div>
+        </div>}
+
+        {step===7&&<div className="fu">
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'4px'}}>media rules 📵</h2>
+          <p style={{color:'#A898B0',fontSize:'12px',marginBottom:'1rem'}}>tap any row to customize</p>
+          <div style={{background:'white',borderRadius:'13px',border:'1px solid #F0E8ED',overflow:'hidden',marginBottom:'1rem'}}>
+            {media.map((r,i)=>(
+              <div key={r.day} style={{display:'flex',alignItems:'center',gap:'9px',padding:'10px 13px',borderBottom:i<6?'1px solid #F0E8ED':'none'}}>
+                <input value={r.emoji} onChange={e=>setMedia(p=>p.map((x,j)=>j===i?{...x,emoji:e.target.value}:x))} style={{width:'34px',padding:'3px',borderRadius:'6px',border:'1px solid #E0D0D8',fontSize:'15px',textAlign:'center',outline:'none'}}/>
+                <div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',width:'26px'}}>{r.day}</div>
+                <input value={r.rule} onChange={e=>setMedia(p=>p.map((x,j)=>j===i?{...x,rule:e.target.value}:x))} style={{flex:1,padding:'5px 9px',borderRadius:'7px',border:'1px solid #E0D0D8',fontSize:'12px',outline:'none',fontFamily:'DM Sans,sans-serif'}}/>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:'10px'}}><Back n={6}/><Next label="i'm ready! 🔥" action={finish}/></div>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+// ── HOME ──────────────────────────────────────────────────────────────
+function Home({u,me,data,upd,checkin,mkGroup,joinGroup,postFeed,heart,affirm,logout}){
+  const [tab,setTab]=useState('today');
+  const [ms,setMs]=useState(null);
+  useEffect(()=>{
+    if(!u||!u.day)return;
+    try{
+      const seen=JSON.parse(localStorage.getItem('ms_'+me)||'[]');
+      const m=MILESTONES.find(x=>x.day===u.day&&!seen.includes(x.day));
+      if(m){setMs(m);localStorage.setItem('ms_'+me,JSON.stringify([...seen,m.day]));}
+    }catch{}
+  },[u&&u.day]);
+  if(!u)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{fontSize:'40px'}}>🌸</div></div>;
+  const c=u.color||'#B5365F';
+  const groups=Object.values(data.groups||{}).filter(g=>g.members&&g.members.includes(me));
+  const tabs=[{id:'today',icon:'ti-sun',lbl:'today'},{id:'goals',icon:'ti-target',lbl:'goals'},{id:'media',icon:'ti-device-mobile-off',lbl:'media'},{id:'tasks',icon:'ti-list-check',lbl:'tasks'},{id:'group',icon:'ti-users',lbl:'squad'}];
+  return(
+    <div style={{display:'flex',flexDirection:'column',minHeight:'100vh',maxWidth:'480px',margin:'0 auto',background:'#fff'}}>
+      <div style={{background:'white',padding:'14px 18px 10px',borderBottom:'1px solid rgba(180,140,165,0.18)',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:100}}>
+        <div>
+          <div style={{fontFamily:'Playfair Display,serif',fontSize:'19px',color:c,fontWeight:'700'}}>my 75 hard k&k 🌸</div>
+          <div style={{fontSize:'11px',color:'#A898B0'}}>hey {u.name} · day {u.day||1} of {u.total_days||75}</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+          <div style={{background:c,color:'white',borderRadius:'20px',padding:'4px 11px',fontSize:'11px',fontWeight:'700'}}>🔥 {u.day||1}/{u.total_days||75}</div>
+          <button onClick={logout} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer'}}><i className="ti ti-logout" style={{fontSize:'18px'}}/></button>
+        </div>
+      </div>
+      <div style={{height:'3px',background:'rgba(180,140,165,0.15)'}}>
+        <div style={{height:'100%',background:`linear-gradient(90deg,${c},#FF6B4A,#FFB830)`,width:`${Math.min(100,((u.day||1)/(u.total_days||75))*100)}%`,transition:'width 0.5s'}}/>
+      </div>
+      <div style={{flex:1,overflowY:'auto',paddingBottom:'80px'}}>
+        {tab==='today'&&<Today u={u} me={me} upd={upd} checkin={checkin} postFeed={postFeed} groups={groups}/>}
+        {tab==='goals'&&<Goals u={u} upd={upd}/>}
+        {tab==='media'&&<Media u={u} upd={upd}/>}
+        {tab==='tasks'&&<Tasks u={u} upd={upd}/>}
+        {tab==='group'&&<Squad u={u} me={me} groups={groups} mkGroup={mkGroup} joinGroup={joinGroup} heart={heart} affirm={affirm} postFeed={postFeed}/>}
+      </div>
+      <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'480px',background:'white',borderTop:'1px solid rgba(180,140,165,0.18)',display:'flex',padding:'8px 0 8px',zIndex:100}}>
+        {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'3px 0',background:'none',border:'none',cursor:'pointer',color:tab===t.id?c:c+'88',transition:'color 0.15s'}}>
+          <i className={`ti ${t.icon}`} style={{fontSize:'22px'}}/>
+          <span style={{fontSize:'9px',fontWeight:'900',letterSpacing:'0.2px'}}>{t.lbl}</span>
+          <div style={{width:'4px',height:'4px',borderRadius:'50%',background:c,opacity:tab===t.id?1:0,transition:'opacity 0.15s'}}/>
+        </button>)}
+      </div>
+      {ms&&<div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(20,10,30,0.6)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={()=>setMs(null)}>
+        <div onClick={e=>e.stopPropagation()} style={{background:'white',borderRadius:'22px',padding:'28px 22px',textAlign:'center',maxWidth:'300px',width:'100%',boxShadow:'0 20px 60px rgba(181,54,95,0.3)'}}>
+          <div style={{fontSize:'56px',marginBottom:'10px'}}>{ms.emoji}</div>
+          <div style={{fontFamily:'Playfair Display,serif',fontSize:'24px',fontWeight:'700',color:c,marginBottom:'8px'}}>{ms.title}</div>
+          <div style={{fontSize:'14px',color:'#6B5870',lineHeight:1.6,marginBottom:'20px'}}>{ms.msg}</div>
+          <Btn label="let's keep going 🔥" onClick={()=>setMs(null)} full color={c}/>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+// ── TODAY TAB ─────────────────────────────────────────────────────────
+function Today({u,me,upd,checkin,postFeed,groups}){
+  const today=new Date().toDateString();
+  const done=(u.checkins||{})[today]||{};
+  const alreadyIn=u.last_checkin===today;
+  const [ok,setOk]=useState(false);
+  const [nh,setNh]=useState('');
+  const c=u.color||'#B5365F';
+  const habits=(u.tasks&&u.tasks.daily)||[];
+  const mediaRule=(u.media_rules||[]).find(r=>r.day===TODAY_DAY);
+  const total=habits.length+(mediaRule?1:0);
+  const doneCount=Object.values(done).filter(Boolean).length;
+  const toggle=id=>{
+    const nd={...done,[id]:!done[id]};
+    upd(x=>({...x,checkins:{...(x.checkins||{}),[today]:nd}}));
+  };
+  const doCheckin=()=>{
+    if(alreadyIn)return;
+    checkin(today,done);
+    groups.forEach(g=>postFeed(g.code,'checkin',{day:u.day,done:doneCount,total,text:`just checked in for day ${u.day}! ${doneCount}/${total} habits done 🔥`}));
+    setOk(true);setTimeout(()=>setOk(false),3000);
+  };
+  const addH=()=>{if(!nh.trim())return;upd(x=>({...x,tasks:{...x.tasks,daily:[...(x.tasks&&x.tasks.daily||[]),{id:'d'+Date.now(),text:nh.trim(),category:'custom'}]}}));setNh('');};
+  const grp={};
+  habits.forEach(h=>{const k=h.category||'custom';if(!grp[k])grp[k]=[];grp[k].push(h);});
+  if(mediaRule){if(!grp['no media'])grp['no media']=[];grp['no media'].push({id:'nm_today',text:`${mediaRule.emoji} ${mediaRule.rule}`,category:'no media'});}
+  return(
+    <div style={{padding:'14px'}}>
+      <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.18)',padding:'12px 14px',display:'flex',alignItems:'center',gap:'12px',marginBottom:'13px'}}>
+        <svg width="48" height="48" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(180,140,165,0.2)" strokeWidth="4"/>
+          <circle cx="24" cy="24" r="20" fill="none" stroke={c} strokeWidth="4"
+            strokeDasharray={`${(doneCount/Math.max(total,1))*125.6} 125.6`}
+            strokeLinecap="round" transform="rotate(-90 24 24)" style={{transition:'stroke-dasharray 0.4s'}}/>
+        </svg>
+        <div style={{flex:1}}>
+          <div style={{fontSize:'13px',fontWeight:'600',color:'#1A1220'}}>{doneCount===0?"let's get it! 💪":doneCount===total?'all done!! 🎉':'keep going ✨'}</div>
+          <div style={{fontSize:'10px',color:'#A898B0',marginTop:'1px'}}>{doneCount}/{total} habits · day {u.day||1}</div>
+        </div>
+        {!alreadyIn&&doneCount>0&&<button onClick={doCheckin} style={{background:c,color:'white',borderRadius:'10px',padding:'7px 13px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer'}}>check in</button>}
+        {alreadyIn&&<div style={{fontSize:'18px'}}>✅</div>}
+      </div>
+      {ok&&<div style={{background:'#EDFBF3',border:'1px solid #A8ECC8',borderRadius:'10px',padding:'9px 13px',marginBottom:'10px',textAlign:'center',fontSize:'13px',color:'#1E6E44',fontWeight:'600'}}>🎉 day {(u.day||2)-1} logged! keep going 🔥</div>}
+      {Object.entries(grp).map(([cat,items])=>{
+        const cs=CAT_STYLE[cat]||CAT_STYLE.custom;
+        return(<div key={cat} style={{marginBottom:'10px'}}>
+          <div style={{fontSize:'10px',fontWeight:'700',color:cs.tx,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px',paddingLeft:'2px'}}>• {cat}</div>
+          <div style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.18)',overflow:'hidden'}}>
+            {items.map((h,i)=>{
+              const isDone=!!done[h.id];
+              return(<div key={h.id} onClick={()=>toggle(h.id)} style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 14px',borderBottom:i<items.length-1?'1px solid rgba(180,140,165,0.12)':'none',cursor:'pointer',background:isDone?cs.bg:'white',transition:'background 0.15s'}}>
+                <div style={{width:'22px',height:'22px',borderRadius:'50%',flexShrink:0,background:isDone?cs.tx:'white',border:isDone?'none':`2px solid ${cs.br}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s'}}>
+                  {isDone&&<i className="ti ti-check" style={{fontSize:'12px',color:'white'}}/>}
+                </div>
+                <span style={{fontSize:'13px',flex:1,color:isDone?'#A898B0':'#1A1220',textDecoration:isDone?'line-through':'none'}}>{h.text}</span>
+                <span style={{fontSize:'10px',fontWeight:'600',padding:'2px 7px',borderRadius:'10px',background:cs.bg,color:cs.tx,border:`1px solid ${cs.br}`}}>{cat}</span>
+              </div>);
+            })}
+          </div>
+        </div>);
+      })}
+      <div style={{display:'flex',gap:'7px',marginBottom:'12px'}}>
+        <input value={nh} onChange={e=>setNh(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addH()} placeholder="+ add a daily habit..." style={{flex:1,padding:'10px 13px',borderRadius:'12px',border:`1.5px dashed ${c}88`,fontSize:'13px',outline:'none',background:'#FDF8FB',fontFamily:'DM Sans,sans-serif'}}/>
+        {nh&&<button onClick={addH} style={{padding:'0 13px',borderRadius:'12px',background:c,color:'white',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>add</button>}
+      </div>
+      <div style={{background:'linear-gradient(135deg,#F3EEFF,#FDF0F5)',border:'1px solid #CDB8FF',borderRadius:'13px',padding:'12px 14px'}}>
+        <div style={{fontSize:'10px',fontWeight:'700',color:'#6B44CC',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px'}}>💜 your why</div>
+        <div style={{fontSize:'12px',color:'#5A3070',lineHeight:1.6,fontStyle:'italic'}}>"{u.why||'tap goals tab to write your why'}"</div>
+      </div>
+    </div>
+  );
+}
+
+// ── GOALS TAB ─────────────────────────────────────────────────────────
+function Goals({u,upd}){
+  const [editWhy,setEW]=useState(false);
+  const [wyDraft,setWD]=useState(u.why||'');
+  const [adding,setAdding]=useState(false);
+  const [nt,setNt]=useState('');
+  const c=u.color||'#B5365F';
+  const l=u.color_light||'#FDF0F5';
+  const goals=u.goals||[];
+  const BCS=['#B5365F','#CC4428','#1870BB','#1E6E44','#9A5C00','#6B44CC'];
+  return(
+    <div style={{padding:'14px'}}>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'3px'}}>my goals 🎯</h2>
+      <p style={{fontSize:'11px',color:'#A898B0',marginBottom:'13px'}}>the pillars of your challenge</p>
+      {goals.map((g,i)=>(
+        <div key={g.id} style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.18)',borderLeft:`4px solid ${BCS[i%6]}`,padding:'11px 13px',marginBottom:'8px'}}>
+          <div style={{fontSize:'13px',fontWeight:'600',color:'#1A1220'}}>{g.title}</div>
+          {g.desc&&<div style={{fontSize:'11px',color:'#6B5870',marginTop:'2px'}}>{g.desc}</div>}
+          <div style={{display:'flex',gap:'5px',marginTop:'8px',flexWrap:'wrap'}}>
+            {['in progress','researching','locked in ✓','done ✅'].map(s=>(
+              <button key={s} onClick={()=>upd(x=>({...x,goals:(x.goals||[]).map(y=>y.id===g.id?{...y,status:s}:y)}))} style={{fontSize:'10px',fontWeight:'600',padding:'3px 8px',borderRadius:'20px',border:`1px solid ${g.status===s?BCS[i%6]:'#E0D0D8'}`,background:g.status===s?l:'transparent',color:g.status===s?c:'#A898B0',cursor:'pointer'}}>{s}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+      {adding?(
+        <div style={{background:'white',borderRadius:'13px',border:`1.5px solid ${c}`,padding:'13px',marginBottom:'8px'}}>
+          <Input value={nt} onChange={setNt} onEnter={()=>{if(!nt.trim())return;upd(x=>({...x,goals:[...(x.goals||[]),{id:'g'+Date.now(),title:nt.trim(),desc:''}]}));setNt('');setAdding(false);}} placeholder="goal title..." style={{marginBottom:'8px'}}/>
+          <div style={{display:'flex',gap:'7px'}}>
+            <button onClick={()=>{if(!nt.trim())return;upd(x=>({...x,goals:[...(x.goals||[]),{id:'g'+Date.now(),title:nt.trim(),desc:''}]}));setNt('');setAdding(false);}} style={{background:c,color:'white',borderRadius:'9px',padding:'7px 15px',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>add</button>
+            <button onClick={()=>setAdding(false)} style={{color:'#A898B0',fontSize:'12px',background:'none',border:'none',cursor:'pointer'}}>cancel</button>
+          </div>
+        </div>
+      ):(
+        <button onClick={()=>setAdding(true)} style={{width:'100%',padding:'11px',borderRadius:'12px',border:`1.5px dashed ${c}88`,color:c,fontSize:'13px',fontWeight:'600',marginBottom:'14px',background:l,cursor:'pointer'}}>+ add a goal</button>
+      )}
+      <div style={{background:'linear-gradient(135deg,#F3EEFF,#FDF0F5)',border:'1px solid #CDB8FF',borderRadius:'13px',padding:'13px 14px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'7px'}}>
+          <div style={{fontSize:'10px',fontWeight:'700',color:'#6B44CC',textTransform:'uppercase',letterSpacing:'1px'}}>💜 my why</div>
+          <button onClick={()=>{setEW(true);setWD(u.why||'');}} style={{color:'#6B44CC',background:'none',border:'none',cursor:'pointer'}}><i className="ti ti-pencil" style={{fontSize:'15px'}}/></button>
+        </div>
+        {editWhy?(
+          <div>
+            <Input value={wyDraft} onChange={setWD} placeholder="your why..." rows={3} style={{marginBottom:'8px',border:'1.5px solid #CDB8FF'}}/>
+            <div style={{display:'flex',gap:'7px'}}>
+              <button onClick={()=>{upd(x=>({...x,why:wyDraft}));setEW(false);}} style={{background:'#6B44CC',color:'white',borderRadius:'8px',padding:'6px 14px',fontSize:'12px',fontWeight:'700',border:'none',cursor:'pointer'}}>save</button>
+              <button onClick={()=>setEW(false)} style={{color:'#A898B0',fontSize:'12px',background:'none',border:'none',cursor:'pointer'}}>cancel</button>
+            </div>
+          </div>
+        ):(
+          <div style={{fontSize:'13px',color:'#5A3070',lineHeight:1.6,fontStyle:'italic'}}>"{u.why||'add your why above ✨'}"</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── MEDIA TAB ─────────────────────────────────────────────────────────
+function Media({u,upd}){
+  const c=u.color||'#B5365F';
+  const l=u.color_light||'#FDF0F5';
+  const rules=u.media_rules||[];
+  const todayR=rules.find(r=>r.day===TODAY_DAY);
+  if(rules.length===0)return(
+    <div style={{padding:'14px'}}>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'10px'}}>no-media challenge 📵</h2>
+      <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'13px',padding:'16px',textAlign:'center'}}>
+        <div style={{fontSize:'13px',color:c,fontWeight:'600',marginBottom:'3px'}}>you skipped this during setup</div>
+        <div style={{fontSize:'11px',color:'#A898B0'}}>no worries — focus on your other habits!</div>
+      </div>
+    </div>
+  );
+  return(
+    <div style={{padding:'14px'}}>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'3px'}}>no-media challenge 📵</h2>
+      <p style={{fontSize:'11px',color:'#A898B0',marginBottom:'12px'}}>your rotating weekly rules</p>
+      {todayR&&<div style={{background:l,border:`1px solid ${c}44`,borderRadius:'13px',padding:'11px 13px',marginBottom:'12px',display:'flex',alignItems:'center',gap:'10px'}}>
+        <div style={{fontSize:'26px'}}>{todayR.emoji}</div>
+        <div><div style={{fontSize:'10px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.5px'}}>today — {TODAY_DAY}</div><div style={{fontSize:'15px',fontWeight:'600',color:'#1A1220',marginTop:'1px'}}>{todayR.rule}</div></div>
+      </div>}
+      <div style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.18)',overflow:'hidden',marginBottom:'12px'}}>
+        {rules.map((r,i)=>(
+          <div key={r.day} style={{display:'flex',alignItems:'center',gap:'9px',padding:'10px 13px',borderBottom:i<rules.length-1?'1px solid rgba(180,140,165,0.12)':'none',background:r.day===TODAY_DAY?l:'white'}}>
+            <div style={{fontSize:'18px',width:'26px',textAlign:'center'}}>{r.emoji}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:'10px',fontWeight:'700',color:r.day===TODAY_DAY?c:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{r.day}{r.day===TODAY_DAY?' · today':''}</div>
+              <div style={{fontSize:'12px',color:'#1A1220',marginTop:'1px'}}>{r.rule}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{background:'linear-gradient(135deg,#F3EEFF,#EEF7FF)',border:'1px solid #CDB8FF',borderRadius:'13px',padding:'12px 14px'}}>
+        <div style={{fontSize:'10px',fontWeight:'700',color:'#6B44CC',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px'}}>🌿 the intention</div>
+        <div style={{fontSize:'12px',color:'#4A3070',lineHeight:1.7}}>less media = more intention. when you're not consuming, you're creating, thinking, being. this is about getting your time back.</div>
+        <div style={{fontSize:'12px',color:'#6B44CC',fontWeight:'600',marginTop:'8px',lineHeight:1.9}}>• silence is not emptiness<br/>• intentional &gt; reactive<br/>• your mind is yours 💜</div>
+      </div>
+    </div>
+  );
+}
+
+// ── TASKS TAB ─────────────────────────────────────────────────────────
+function Tasks({u,upd}){
+  const [list,setList]=useState('general');
+  const [nt,setNt]=useState('');
+  const [urg,setUrg]=useState(false);
+  const c=u.color||'#B5365F';
+  const l=u.color_light||'#FDF0F5';
+  const general=(u.tasks&&u.tasks.general)||[];
+  const weekly=(u.tasks&&u.tasks.weekly)||[];
+  const daily=(u.tasks&&u.tasks.daily)||[];
+  const weekKey=()=>{const d=new Date();const s=new Date(d);s.setDate(d.getDate()-d.getDay());return s.toDateString();};
+  const togG=id=>upd(x=>({...x,tasks:{...x.tasks,general:(x.tasks&&x.tasks.general||[]).map(t=>t.id===id?{...t,done:!t.done}:t)}}));
+  const togU=id=>upd(x=>({...x,tasks:{...x.tasks,general:(x.tasks&&x.tasks.general||[]).map(t=>t.id===id?{...t,urgent:!t.urgent}:t)}}));
+  const remG=id=>upd(x=>({...x,tasks:{...x.tasks,general:(x.tasks&&x.tasks.general||[]).filter(t=>t.id!==id)}}));
+  const addT=()=>{
+    if(!nt.trim())return;
+    if(list==='general')upd(x=>({...x,tasks:{...x.tasks,general:[...(x.tasks&&x.tasks.general||[]),{id:'g'+Date.now(),text:nt.trim(),urgent:urg,done:false}]}}));
+    if(list==='weekly')upd(x=>({...x,tasks:{...x.tasks,weekly:[...(x.tasks&&x.tasks.weekly||[]),{id:'w'+Date.now(),text:nt.trim(),category:'custom'}]}}));
+    setNt('');setUrg(false);
+  };
+  const togW=id=>{const k=weekKey()+'_'+id;upd(x=>({...x,weekly_done:{...(x.weekly_done||{}),[k]:!(x.weekly_done&&x.weekly_done[k])}}));};
+  const urg_i=general.filter(t=>t.urgent&&!t.done);
+  const reg_i=general.filter(t=>!t.urgent&&!t.done);
+  const don_i=general.filter(t=>t.done);
+  return(
+    <div style={{padding:'14px'}}>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'3px'}}>task lists ✅</h2>
+      <p style={{fontSize:'11px',color:'#A898B0',marginBottom:'12px'}}>daily resets midnight · weekly resets sunday</p>
+      <div style={{display:'flex',gap:'6px',marginBottom:'13px'}}>
+        {[['general','to-do'],['weekly','weekly'],['daily','daily']].map(([id,lbl])=>(
+          <button key={id} onClick={()=>setList(id)} style={{flex:1,padding:'8px 5px',borderRadius:'11px',fontSize:'11px',fontWeight:'700',border:'1px solid rgba(180,140,165,0.3)',background:list===id?c:'white',color:list===id?'white':'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{lbl}</button>
+        ))}
+      </div>
+      {list==='general'&&<div>
+        {urg_i.length>0&&<div style={{marginBottom:'10px'}}>
+          <div style={{fontSize:'10px',fontWeight:'700',color:'#B5365F',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px',display:'flex',alignItems:'center',gap:'4px'}}><span style={{width:'7px',height:'7px',borderRadius:'50%',background:'#B5365F',display:'inline-block'}}/>urgent</div>
+          <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(181,54,95,0.2)',overflow:'hidden'}}>
+            {urg_i.map((t,i)=><TRow key={t.id} t={t} onT={()=>togG(t.id)} onU={()=>togU(t.id)} onR={()=>remG(t.id)} last={i===urg_i.length-1} c={c}/>)}
+          </div>
+        </div>}
+        {reg_i.length>0&&<div style={{marginBottom:'10px'}}>
+          {urg_i.length>0&&<div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px'}}>regular</div>}
+          <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(180,140,165,0.18)',overflow:'hidden'}}>
+            {reg_i.map((t,i)=><TRow key={t.id} t={t} onT={()=>togG(t.id)} onU={()=>togU(t.id)} onR={()=>remG(t.id)} last={i===reg_i.length-1} c={c}/>)}
+          </div>
+        </div>}
+        {don_i.length>0&&<div style={{marginBottom:'10px',opacity:0.65}}>
+          <div style={{fontSize:'10px',fontWeight:'700',color:'#1E6E44',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px'}}>done 🎉 ({don_i.length})</div>
+          <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(180,140,165,0.18)',overflow:'hidden'}}>
+            {don_i.map((t,i)=><TRow key={t.id} t={t} onT={()=>togG(t.id)} onU={()=>{}} onR={()=>remG(t.id)} last={i===don_i.length-1} isDone c={c}/>)}
+          </div>
+        </div>}
+        <div style={{display:'flex',gap:'7px',marginBottom:'8px'}}>
+          <input value={nt} onChange={e=>setNt(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addT()} placeholder="add a task..." style={{flex:1,padding:'10px 13px',borderRadius:'11px',border:`1.5px dashed ${c}88`,fontSize:'13px',outline:'none',background:l,fontFamily:'DM Sans,sans-serif'}}/>
+          <button onClick={()=>setUrg(!urg)} style={{padding:'0 10px',borderRadius:'10px',background:urg?'rgba(181,54,95,0.1)':'transparent',border:`1px solid ${urg?'#B5365F':'rgba(180,140,165,0.3)'}`,color:urg?'#B5365F':'#A898B0',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>urgent</button>
+          {nt&&<button onClick={addT} style={{padding:'0 12px',borderRadius:'10px',background:c,color:'white',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>add</button>}
+        </div>
+      </div>}
+      {list==='weekly'&&<div>
+        <div style={{fontSize:'11px',color:'#A898B0',marginBottom:'9px'}}>resets every sunday 🌙</div>
+        <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(180,140,165,0.18)',overflow:'hidden',marginBottom:'10px'}}>
+          {weekly.map((t,i)=>{
+            const k=weekKey()+'_'+t.id;
+            const wd=!!(u.weekly_done&&u.weekly_done[k]);
+            return(<div key={t.id} onClick={()=>togW(t.id)} style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 13px',borderBottom:i<weekly.length-1?'1px solid rgba(180,140,165,0.12)':'none',cursor:'pointer',background:wd?'#EDFBF3':'white'}}>
+              <div style={{width:'20px',height:'20px',borderRadius:'5px',background:wd?'#1E6E44':'white',border:wd?'none':'2px solid #A8ECC8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.2s'}}>
+                {wd&&<i className="ti ti-check" style={{fontSize:'11px',color:'white'}}/>}
+              </div>
+              <span style={{fontSize:'13px',color:wd?'#A898B0':'#1A1220',textDecoration:wd?'line-through':'none',flex:1}}>{t.text}</span>
+            </div>);
+          })}
+        </div>
+        <div style={{display:'flex',gap:'7px'}}>
+          <input value={nt} onChange={e=>setNt(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addT()} placeholder="add weekly task..." style={{flex:1,padding:'10px 13px',borderRadius:'11px',border:'1.5px dashed #A8ECC8',fontSize:'13px',outline:'none',background:'#EDFBF3',fontFamily:'DM Sans,sans-serif'}}/>
+          {nt&&<button onClick={addT} style={{padding:'0 12px',borderRadius:'10px',background:'#1E6E44',color:'white',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>add</button>}
+        </div>
+      </div>}
+      {list==='daily'&&<div>
+        <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'12px',padding:'11px 13px',marginBottom:'10px'}}>
+          <div style={{fontSize:'11px',fontWeight:'700',color:c,marginBottom:'3px'}}>💡 daily habits are on the today tab</div>
+          <div style={{fontSize:'11px',color:'#A898B0'}}>they reset each midnight automatically.</div>
+        </div>
+        <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(180,140,165,0.18)',overflow:'hidden'}}>
+          {daily.map((t,i)=>(
+            <div key={t.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 13px',borderBottom:i<daily.length-1?'1px solid rgba(180,140,165,0.12)':'none'}}>
+              <div style={{width:'7px',height:'7px',borderRadius:'50%',background:c,flexShrink:0}}/>
+              <span style={{fontSize:'13px',color:'#1A1220',flex:1}}>{t.text}</span>
+              <span style={{fontSize:'10px',color:c,fontWeight:'600',background:l,padding:'2px 7px',borderRadius:'10px'}}>{t.category}</span>
+            </div>
+          ))}
+        </div>
+      </div>}
+    </div>
+  );
+}
+function TRow({t,onT,onU,onR,last,isDone,c='#B5365F'}){
+  const [open,setOpen]=useState(false);
+  return(<div style={{borderBottom:last?'none':'1px solid rgba(180,140,165,0.12)'}}>
+    <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 13px'}}>
+      <div onClick={onT} style={{width:'20px',height:'20px',borderRadius:'50%',flexShrink:0,cursor:'pointer',background:isDone?'#1E6E44':t.urgent?'rgba(181,54,95,0.1)':'white',border:isDone?'none':t.urgent?'2px solid #B5365F':'2px solid rgba(180,140,165,0.35)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s'}}>
+        {isDone&&<i className="ti ti-check" style={{fontSize:'11px',color:'white'}}/>}
+        {t.urgent&&!isDone&&<span style={{width:'5px',height:'5px',borderRadius:'50%',background:'#B5365F',display:'block'}}/>}
+      </div>
+      <span style={{flex:1,fontSize:'13px',color:isDone?'#A898B0':'#1A1220',textDecoration:isDone?'line-through':'none'}}>{t.text}</span>
+      {t.urgent&&!isDone&&<span style={{fontSize:'9px',fontWeight:'800',padding:'2px 6px',borderRadius:'10px',background:'rgba(181,54,95,0.1)',color:'#B5365F',border:'1px solid rgba(181,54,95,0.2)'}}>URGENT</span>}
+      <button onClick={()=>setOpen(!open)} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer'}}><i className="ti ti-dots" style={{fontSize:'15px'}}/></button>
+    </div>
+    {open&&<div style={{display:'flex',gap:'5px',padding:'0 13px 9px',flexWrap:'wrap'}}>
+      {!isDone&&<button onClick={()=>{onU();setOpen(false);}} style={{fontSize:'10px',fontWeight:'700',padding:'3px 9px',borderRadius:'20px',background:'rgba(181,54,95,0.08)',color:'#B5365F',border:'1px solid rgba(181,54,95,0.2)',cursor:'pointer'}}>{t.urgent?'remove urgent':'🔴 mark urgent'}</button>}
+      <button onClick={()=>{onR();setOpen(false);}} style={{fontSize:'10px',fontWeight:'700',padding:'3px 9px',borderRadius:'20px',background:'#FDF0F5',color:'#B5365F',border:'1px solid #F4ADCA',cursor:'pointer'}}>remove</button>
+      <button onClick={()=>setOpen(false)} style={{fontSize:'10px',color:'#A898B0',background:'none',border:'none',cursor:'pointer'}}>cancel</button>
+    </div>}
+  </div>);
+}
+
+// ── SQUAD TAB ─────────────────────────────────────────────────────────
+function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
+  const [view,setView]=useState('feed');
+  const [gn,setGn]=useState('');
+  const [jc,setJc]=useState('');
+  const [msg,setMsg]=useState('');
+  const [win,setWin]=useState('');
+  const [sharing,setSharing]=useState(false);
+  const [affFor,setAffFor]=useState(null);
+  const c=u.color||'#B5365F';
+  const l=u.color_light||'#FDF0F5';
+  const ag=groups[0];
+  const doCreate=()=>{if(!gn.trim())return;const code=mkGroup(gn.trim());setMsg(`created! share code: ${code} 🎉`);setGn('');setView('feed');};
+  const doJoin=()=>{const ok=joinGroup(jc.trim().toUpperCase());if(ok){setMsg('joined! 🌸');setJc('');setView('feed');}else setMsg('code not found — check it again!');};
+  const doWin=()=>{if(!win.trim()||!ag)return;postFeed(ag.code,'win',{text:win.trim()});setWin('');setSharing(false);};
+  const ago=ts=>{const m=Math.floor((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago';};
+  if(groups.length===0)return(
+    <div style={{padding:'14px'}}>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'3px'}}>squad 👯‍♀️</h2>
+      <p style={{fontSize:'11px',color:'#A898B0',marginBottom:'13px'}}>create a group or join one</p>
+      <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'14px',padding:'20px',textAlign:'center',marginBottom:'11px'}}>
+        <div style={{fontSize:'36px',marginBottom:'7px'}}>🌸</div>
+        <div style={{fontSize:'14px',fontWeight:'700',color:c,marginBottom:'3px'}}>no group yet</div>
+        <div style={{fontSize:'11px',color:'#6B5870'}}>create one for you and your sis, or join with a code</div>
+      </div>
+      <button onClick={()=>setView(view==='create'?'feed':'create')} style={{width:'100%',padding:'12px',borderRadius:'12px',background:c,color:'#fff',fontSize:'14px',fontWeight:'900',border:'none',cursor:'pointer',marginBottom:'8px'}}>create a group ✨</button>
+      <button onClick={()=>setView(view==='join'?'feed':'join')} style={{width:'100%',padding:'12px',borderRadius:'12px',border:`1.5px solid #A8D8FF`,color:'#1870BB',fontSize:'14px',fontWeight:'900',background:'#EEF7FF',cursor:'pointer',marginBottom:'12px'}}>join with a code 🔗</button>
+      {view==='create'&&<div style={{background:'white',borderRadius:'14px',border:`1.5px solid ${c}`,padding:'14px',marginBottom:'10px'}}>
+        <Input value={gn} onChange={setGn} onEnter={doCreate} placeholder="group name e.g. k&k 75 hard 🌸" style={{marginBottom:'10px'}}/>
+        <div style={{display:'flex',gap:'7px'}}><button onClick={doCreate} style={{background:c,color:'white',borderRadius:'10px',padding:'9px 18px',fontWeight:'700',fontSize:'13px',border:'none',cursor:'pointer'}}>create</button><button onClick={()=>setView('feed')} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer',fontSize:'13px'}}>cancel</button></div>
+      </div>}
+      {view==='join'&&<div style={{background:'white',borderRadius:'14px',border:'1.5px solid #A8D8FF',padding:'14px'}}>
+        <Input value={jc} onChange={v=>setJc(v.toUpperCase())} onEnter={doJoin} placeholder="ABC12" style={{fontSize:'18px',letterSpacing:'4px',textAlign:'center',fontWeight:'700',marginBottom:'10px'}}/>
+        <div style={{display:'flex',gap:'7px'}}><button onClick={doJoin} style={{background:'#1870BB',color:'white',borderRadius:'10px',padding:'9px 18px',fontWeight:'700',fontSize:'13px',border:'none',cursor:'pointer'}}>join</button><button onClick={()=>setView('feed')} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer',fontSize:'13px'}}>cancel</button></div>
+      </div>}
+      {msg&&<div style={{marginTop:'10px',padding:'10px',background:'#EDFBF3',borderRadius:'10px',color:'#1E6E44',fontSize:'13px',fontWeight:'600',textAlign:'center',border:'1px solid #A8ECC8'}}>{msg}</div>}
+    </div>
+  );
+  return(
+    <div style={{padding:'14px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'11px'}}>
+        <div>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220'}}>squad 👯‍♀️</h2>
+          {ag&&<div style={{fontSize:'11px',color:'#A898B0'}}>{ag.name} · code: <strong style={{letterSpacing:'1px'}}>{ag.code}</strong></div>}
+        </div>
+        <button onClick={()=>setView(view==='join'?'feed':'join')} style={{background:'#EEF7FF',color:'#1870BB',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'1px solid #A8D8FF',cursor:'pointer'}}>+ join more</button>
+      </div>
+      {view==='join'&&<div style={{background:'white',borderRadius:'14px',border:'1.5px solid #A8D8FF',padding:'13px',marginBottom:'11px'}}>
+        <Input value={jc} onChange={v=>setJc(v.toUpperCase())} onEnter={doJoin} placeholder="enter code..." style={{fontSize:'16px',letterSpacing:'3px',textAlign:'center',fontWeight:'700',marginBottom:'9px'}}/>
+        <div style={{display:'flex',gap:'7px'}}><button onClick={doJoin} style={{background:'#1870BB',color:'white',borderRadius:'10px',padding:'8px 18px',fontWeight:'700',fontSize:'13px',border:'none',cursor:'pointer'}}>join</button><button onClick={()=>setView('feed')} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer',fontSize:'13px'}}>cancel</button></div>
+      </div>}
+      {!sharing?(
+        <button onClick={()=>setSharing(true)} style={{width:'100%',padding:'10px',borderRadius:'12px',background:`linear-gradient(135deg,#FFFBEF,#FFF2EF)`,border:'1px solid #FFE08A',color:'#9A5C00',fontSize:'13px',fontWeight:'700',cursor:'pointer',marginBottom:'11px'}}>🏆 share a win</button>
+      ):(
+        <div style={{background:'white',borderRadius:'14px',border:'1.5px solid #FFE08A',padding:'13px',marginBottom:'11px'}}>
+          <Input value={win} onChange={setWin} placeholder="share your win! 🎉" rows={2} style={{marginBottom:'9px'}}/>
+          <div style={{display:'flex',gap:'7px'}}><button onClick={doWin} style={{background:'#9A5C00',color:'white',borderRadius:'10px',padding:'8px 18px',fontWeight:'700',fontSize:'13px',border:'none',cursor:'pointer'}}>share 🏆</button><button onClick={()=>{setSharing(false);setWin('');}} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer',fontSize:'13px'}}>cancel</button></div>
+        </div>
+      )}
+      {ag&&(!ag.feed||ag.feed.length===0)&&<div style={{textAlign:'center',padding:'36px 20px',color:'#A898B0',fontSize:'13px'}}>
+        <div style={{fontSize:'30px',marginBottom:'8px'}}>🌸</div>
+        no posts yet — check in today to start!
+      </div>}
+      {ag&&(ag.feed||[]).map(post=>(
+        <div key={post.id} style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.18)',borderLeft:`3px solid ${post.type==='win'?'#9A5C00':c}`,marginBottom:'9px',overflow:'hidden'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'9px',padding:'11px 13px 7px'}}>
+            <div style={{width:'30px',height:'30px',borderRadius:'50%',background:`linear-gradient(135deg,${c},#FF6B4A)`,color:'white',fontSize:'13px',fontWeight:'700',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{post.user&&post.user[0]&&post.user[0].toUpperCase()}</div>
+            <div style={{flex:1}}><div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220'}}>{post.user}</div><div style={{fontSize:'10px',color:'#A898B0'}}>{ago(post.ts)}</div></div>
+            <span style={{fontSize:'16px'}}>{post.type==='win'?'🏆':'🔥'}</span>
+          </div>
+          <div style={{fontSize:'13px',color:'#6B5870',padding:'0 13px 9px',lineHeight:1.5}}>{post.content&&post.content.text}</div>
+          {post.content&&post.content.done!==undefined&&<div style={{display:'flex',gap:'5px',padding:'0 13px 9px'}}>
+            <span style={{fontSize:'10px',fontWeight:'700',padding:'2px 8px',borderRadius:'20px',background:l,color:c,border:`1px solid ${c}44`}}>day {post.content.day} ✓</span>
+            <span style={{fontSize:'10px',fontWeight:'700',padding:'2px 8px',borderRadius:'20px',background:'#EDFBF3',color:'#1E6E44',border:'1px solid #A8ECC8'}}>{post.content.done}/{post.content.total} habits</span>
+          </div>}
+          {post.affirmations&&post.affirmations.length>0&&<div style={{borderTop:'1px solid rgba(180,140,165,0.12)',padding:'8px 13px',background:l}}>
+            {post.affirmations.map((a,i)=><div key={i} style={{fontSize:'12px',color:c,marginBottom:i<post.affirmations.length-1?'3px':0}}><strong>{a.user}:</strong> {a.text}</div>)}
+          </div>}
+          <div style={{borderTop:'1px solid rgba(180,140,165,0.12)',padding:'8px 13px',display:'flex',gap:'12px',alignItems:'center'}}>
+            <button onClick={()=>heart(ag.code,post.id)} style={{display:'flex',alignItems:'center',gap:'5px',color:'#B5365F',fontWeight:'900',fontSize:'14px',background:'none',border:'none',cursor:'pointer'}}>
+              <i className="ti ti-heart" style={{fontSize:'20px',color:'#B5365F'}}/>
+              <span style={{fontSize:'15px',fontWeight:'900',color:'#B5365F'}}>{post.hearts&&post.hearts.length>0?post.hearts.length:''}</span>
+            </button>
+            <button onClick={()=>setAffFor(affFor===post.id?null:post.id)} style={{display:'flex',alignItems:'center',gap:'5px',color:'#B5365F',fontSize:'13px',fontWeight:'900',border:`2px solid #B5365F`,borderRadius:'20px',padding:'4px 12px',background:'white',cursor:'pointer'}}>
+              <i className="ti ti-message-circle" style={{fontSize:'15px'}}/> cheer
+            </button>
+          </div>
+          {affFor===post.id&&<div style={{borderTop:'1px solid rgba(180,140,165,0.12)',padding:'10px 13px',background:l}}>
+            <div style={{fontSize:'10px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:'7px'}}>send an affirmation 💜</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'5px'}}>
+              {AFFIRMATIONS.map((a,i)=><button key={i} onClick={()=>{affirm(ag.code,post.id,a);setAffFor(null);}} style={{padding:'5px 11px',borderRadius:'20px',fontSize:'11px',fontWeight:'600',background:'white',color:c,border:`1px solid ${c}44`,cursor:'pointer'}}>{a}</button>)}
+            </div>
+          </div>}
+        </div>
+      ))}
+      {msg&&<div style={{marginTop:'10px',padding:'10px',background:'#EDFBF3',borderRadius:'10px',color:'#1E6E44',fontSize:'13px',fontWeight:'600',textAlign:'center',border:'1px solid #A8ECC8'}}>{msg}</div>}
+    </div>
+  );
+}
+
+// ── APP ROOT ──────────────────────────────────────────────────────────
+function App(){
+  const [screen,setScreen]=useState('auth');
+  const [me,setMe]=useState(null);
+  const [data,setData]=useState(loadAll);
+  const sd=d=>{setData(d);saveAll(d);};
+  const login=(name,pin)=>{
+    const d=loadAll();
+    const k=name.toLowerCase().trim();
+    if(d.users[k]){
+      if(d.users[k].pin!==pin)return false;
+      setMe(k);setData(d);
+      setScreen(d.users[k].onboarded?'home':'onboarding');
+    }else{
+      const nd={...d,users:{...d.users,[k]:{name:k,pin,onboarded:false,day:1,total_days:75,color:'#B5365F',color_light:'#FDF0F5',tasks:{daily:[],weekly:[],general:[]},goals:[],media_rules:[],why:'',groups:[]}}};
+      sd(nd);setMe(k);
+      setScreen('onboarding');
+    }
+    return true;
+  };
+  const complete=profile=>{
+    const d=loadAll();
+    const nd={...d,users:{...d.users,[me]:{...d.users[me],...profile,onboarded:true,day:1,start_date:new Date().toDateString()}}};
+    sd(nd);setData(nd);setScreen('home');
+  };
+  const upd=fn=>{
+    const d=loadAll();
+    const u=typeof fn==='function'?fn(d.users[me]):{...d.users[me],...fn};
+    const nd={...d,users:{...d.users,[me]:u}};
+    sd(nd);setData(nd);
+  };
+  const checkin=(date,done)=>{
+    const d=loadAll();
+    const u=d.users[me];
+    const nd={...d,users:{...d.users,[me]:{...u,checkins:{...(u.checkins||{}),[date]:done},day:(u.day||1)+1,last_checkin:date}}};
+    sd(nd);setData(nd);
+  };
+  const mkGroup=name=>{
+    const code=Math.random().toString(36).slice(2,7).toUpperCase();
+    const d=loadAll();
+    const nd={...d,groups:{...(d.groups||{}),[code]:{code,name,members:[me],feed:[]}},users:{...d.users,[me]:{...d.users[me],groups:[...((d.users[me].groups)||[]),code]}}};
+    sd(nd);setData(nd);return code;
+  };
+  const joinGrp=code=>{
+    const d=loadAll();const g=(d.groups||{})[code.toUpperCase()];
+    if(!g)return false;
+    const uc=code.toUpperCase();
+    const nd={...d,groups:{...d.groups,[uc]:{...g,members:[...new Set([...g.members,me])]}},users:{...d.users,[me]:{...d.users[me],groups:[...new Set([...((d.users[me].groups)||[]),uc])]}}};
+    sd(nd);setData(nd);return true;
+  };
+  const postFeed=(code,type,content)=>{
+    const d=loadAll();const g=(d.groups||{})[code];
+    if(!g)return;
+    const post={id:Date.now(),user:me,type,content,ts:Date.now(),hearts:[],affirmations:[]};
+    const nd={...d,groups:{...d.groups,[code]:{...g,feed:[post,...(g.feed||[]).slice(0,49)]}}};
+    sd(nd);setData(nd);
+  };
+  const heartPost=(code,pid)=>{
+    const d=loadAll();const g=(d.groups||{})[code];if(!g)return;
+    const feed=(g.feed||[]).map(p=>{if(p.id!==pid)return p;const h=p.hearts.includes(me)?p.hearts.filter(x=>x!==me):[...p.hearts,me];return{...p,hearts:h};});
+    const nd={...d,groups:{...d.groups,[code]:{...g,feed}}};sd(nd);setData(nd);
+  };
+  const affirmPost=(code,pid,text)=>{
+    const d=loadAll();const g=(d.groups||{})[code];if(!g)return;
+    const feed=(g.feed||[]).map(p=>{if(p.id!==pid)return p;return{...p,affirmations:[...(p.affirmations||[]),{user:me,text,ts:Date.now()}]};});
+    const nd={...d,groups:{...d.groups,[code]:{...g,feed}}};sd(nd);setData(nd);
+  };
+  const u=data&&data.users&&me?data.users[me]:null;
+  if(screen==='auth')return<Auth onLogin={login}/>;
+  if(screen==='onboarding')return<Onboarding username={me} onComplete={complete}/>;
+  return<Home u={u} me={me} data={data} upd={upd} checkin={checkin} mkGroup={mkGroup} joinGroup={joinGrp} postFeed={postFeed} heart={heartPost} affirm={affirmPost} logout={()=>{setMe(null);setScreen('auth');}}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
