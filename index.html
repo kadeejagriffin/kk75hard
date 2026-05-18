@@ -18,7 +18,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:#fff;color:#1A1220;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+body{font-family:'DM Sans',sans-serif;background:#fff;color:#1A1220;-webkit-font-smoothing:antialiased;overscroll-behavior:none;font-size:16px}
 input,button,textarea{font-family:'DM Sans',sans-serif}
 button{cursor:pointer;border:none;background:none}
 ::-webkit-scrollbar{width:4px}
@@ -382,7 +382,7 @@ function Home({u,me,setU,logout}){
     if(!u)return
     const today=new Date().toDateString()
     const lastQuote=localStorage.getItem('quote_date_'+me)
-    if(lastQuote===today)return
+    if(lastQuote===today)return  // already shown today
     const QUOTES=[
       "you are becoming the person you've always wanted to be 🌸",
       "every day you show up is a day you choose yourself 💜",
@@ -519,15 +519,18 @@ function Home({u,me,setU,logout}){
       <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'480px',background:'white',borderTop:'1px solid rgba(180,140,165,0.18)',display:'flex',padding:'8px 0',zIndex:100}}>
         {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'3px 0',background:'none',border:'none',cursor:'pointer',color:tab===t.id?c:c+'88',transition:'color 0.15s'}}>
           <i className={`ti ${t.icon}`} style={{fontSize:'22px'}}/>
-          <span style={{fontSize:'9px',fontWeight:'900',letterSpacing:'0.2px'}}>{t.lbl}</span>
+          <span style={{fontSize:'11px',fontWeight:'900',letterSpacing:'0.2px'}}>{t.lbl}</span>
           <div style={{width:'4px',height:'4px',borderRadius:'50%',background:c,opacity:tab===t.id?1:0,transition:'opacity 0.15s'}}/>
         </button>)}
       </div>
       {showProfile&&<ProfileModal u={u} me={me} save={save} onClose={()=>setShowProfile(false)}/>}
-      {quote&&<div style={{position:'fixed',top:'20px',left:'50%',transform:'translateX(-50%)',zIndex:150,background:'white',borderRadius:'16px',padding:'14px 18px',maxWidth:'320px',width:'90%',boxShadow:'0 8px 32px rgba(181,54,95,0.2)',border:'1px solid #F4ADCA',animation:'fadeUp 0.4s ease'}}>
-        <div style={{fontSize:'11px',fontWeight:'700',color:'#B5365F',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px'}}>✨ good morning</div>
-        <div style={{fontSize:'13px',color:'#6B5870',lineHeight:1.6,fontStyle:'italic'}}>"{quote}"</div>
-        <button onClick={()=>setQuote(null)} style={{position:'absolute',top:'10px',right:'12px',color:'#A898B0',fontSize:'16px',background:'none',border:'none',cursor:'pointer'}}>×</button>
+      {quote&&<div style={{position:'fixed',inset:0,zIndex:150,background:'rgba(20,10,30,0.45)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}} onClick={()=>setQuote(null)}>
+        <div onClick={e=>e.stopPropagation()} style={{background:'white',borderRadius:'22px',padding:'28px 24px',maxWidth:'320px',width:'100%',boxShadow:'0 12px 48px rgba(181,54,95,0.25)',border:'1px solid #F4ADCA',textAlign:'center',animation:'fadeUp 0.4s ease'}}>
+          <div style={{fontSize:'32px',marginBottom:'10px'}}>🌸</div>
+          <div style={{fontSize:'12px',fontWeight:'700',color:'#B5365F',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'8px'}}>good morning ✨</div>
+          <div style={{fontSize:'16px',color:'#6B5870',lineHeight:1.7,fontStyle:'italic',marginBottom:'20px'}}>"{quote}"</div>
+          <button onClick={()=>setQuote(null)} style={{background:'#B5365F',color:'white',borderRadius:'12px',padding:'10px 28px',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>let's do this 🔥</button>
+        </div>
       </div>}
       {ms&&<div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(20,10,30,0.6)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={()=>setMs(null)}>
         <div onClick={e=>e.stopPropagation()} style={{background:'white',borderRadius:'22px',padding:'28px 22px',textAlign:'center',maxWidth:'300px',width:'100%',boxShadow:'0 20px 60px rgba(181,54,95,0.3)'}}>
@@ -624,7 +627,7 @@ function Today({u,me,save,checkin,groups}){
                     <div onClick={()=>toggle(h.id)} style={{width:'22px',height:'22px',borderRadius:'50%',flexShrink:0,background:isDone?cs.tx:'white',border:isDone?'none':`2px solid ${cs.br}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s',cursor:'pointer'}}>
                       {isDone&&<i className="ti ti-check" style={{fontSize:'12px',color:'white'}}/>}
                     </div>
-                    <span onClick={()=>toggle(h.id)} style={{fontSize:'13px',flex:1,color:isDone?'#A898B0':'#1A1220',textDecoration:isDone?'line-through':'none',cursor:'pointer'}}>{h.text}</span>
+                    <span onClick={()=>toggle(h.id)} style={{fontSize:'15px',flex:1,color:isDone?'#A898B0':'#1A1220',textDecoration:isDone?'line-through':'none',cursor:'pointer'}}>{h.text}</span>
                     {!h.isMedia&&<div style={{display:'flex',gap:'5px'}}>
                       <button onClick={()=>{setEditHabit(h.id);setEditText(h.text)}} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer',padding:'2px'}}><i className="ti ti-pencil" style={{fontSize:'13px'}}/></button>
                       <button onClick={()=>deleteHabit(h.id)} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer',padding:'2px'}}><i className="ti ti-trash" style={{fontSize:'13px'}}/></button>
@@ -672,7 +675,7 @@ function Goals({u,save}){
 
   return(
     <div style={{padding:'14px'}}>
-      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'3px'}}>my goals 🎯</h2>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'3px'}}>my goals 🎯</h2>
       <p style={{fontSize:'11px',color:'#A898B0',marginBottom:'13px'}}>tap ✏️ to edit any goal anytime</p>
       {goals.map((g,i)=>(
         <div key={g.id} style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.18)',borderLeft:`4px solid ${BCS[i%6]}`,padding:'11px 13px',marginBottom:'8px'}}>
@@ -689,7 +692,7 @@ function Goals({u,save}){
             <div>
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'8px',marginBottom:'4px'}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:'13px',fontWeight:'600',color:'#1A1220'}}>{g.title}</div>
+                  <div style={{fontSize:'15px',fontWeight:'600',color:'#1A1220'}}>{g.title}</div>
                   {g.desc&&<div style={{fontSize:'11px',color:'#6B5870',marginTop:'2px'}}>{g.desc}</div>}
                 </div>
                 <div style={{display:'flex',gap:'4px',flexShrink:0}}>
@@ -771,7 +774,7 @@ function Media({u,save}){
 
   if(rules.length===0&&!editing)return(
     <div style={{padding:'14px'}}>
-      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'10px'}}>no-media challenge 📵</h2>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'10px'}}>no-media challenge 📵</h2>
       <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'13px',padding:'16px',textAlign:'center',marginBottom:'12px'}}>
         <div style={{fontSize:'13px',color:c,fontWeight:'600',marginBottom:'3px'}}>you skipped this during setup</div>
         <div style={{fontSize:'11px',color:'#A898B0',marginBottom:'12px'}}>want to add it now?</div>
@@ -884,7 +887,7 @@ function Tasks({u,save}){
 
   return(
     <div style={{padding:'14px'}}>
-      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'3px'}}>task lists ✅</h2>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'3px'}}>task lists ✅</h2>
       <p style={{fontSize:'11px',color:'#A898B0',marginBottom:'12px'}}>daily resets midnight · weekly resets sunday</p>
       <div style={{display:'flex',gap:'6px',marginBottom:'13px'}}>
         {[['general','to-do'],['weekly','weekly'],['daily','daily']].map(([id,lbl])=>(
@@ -966,7 +969,7 @@ function TRow({t,onT,onU,onR,last,isDone,c='#B5365F'}){
         {isDone&&<i className="ti ti-check" style={{fontSize:'11px',color:'white'}}/>}
         {t.urgent&&!isDone&&<span style={{width:'5px',height:'5px',borderRadius:'50%',background:'#B5365F',display:'block'}}/>}
       </div>
-      <span style={{flex:1,fontSize:'13px',color:isDone?'#A898B0':'#1A1220',textDecoration:isDone?'line-through':'none'}}>{t.text}</span>
+      <span style={{flex:1,fontSize:'15px',color:isDone?'#A898B0':'#1A1220',textDecoration:isDone?'line-through':'none'}}>{t.text}</span>
       {t.urgent&&!isDone&&<span style={{fontSize:'9px',fontWeight:'800',padding:'2px 6px',borderRadius:'10px',background:'rgba(181,54,95,0.1)',color:'#B5365F',border:'1px solid rgba(181,54,95,0.2)'}}>URGENT</span>}
       <button onClick={()=>setOpen(!open)} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer'}}><i className="ti ti-dots" style={{fontSize:'15px'}}/></button>
     </div>
@@ -998,7 +1001,7 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
 
   if(groups.length===0)return(
     <div style={{padding:'14px'}}>
-      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220',marginBottom:'3px'}}>squad 👯‍♀️</h2>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'3px'}}>squad 👯‍♀️</h2>
       <p style={{fontSize:'11px',color:'#A898B0',marginBottom:'13px'}}>create a group or join one</p>
       <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'14px',padding:'20px',textAlign:'center',marginBottom:'11px'}}>
         <div style={{fontSize:'36px',marginBottom:'7px'}}>🌸</div>
@@ -1029,7 +1032,7 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
     <div style={{padding:'14px'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'11px'}}>
         <div>
-          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'21px',color:'#1A1220'}}>squad 👯‍♀️</h2>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220'}}>squad 👯‍♀️</h2>
           {ag&&<div style={{fontSize:'11px',color:'#A898B0'}}>{ag.name} · code: <strong style={{letterSpacing:'1px'}}>{ag.code}</strong></div>}
         </div>
         <button onClick={()=>setView(view==='join'?'feed':'join')} style={{background:'#EEF7FF',color:'#1870BB',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'1px solid #A8D8FF',cursor:'pointer'}}>+ join more</button>
@@ -1112,12 +1115,14 @@ function ProfileModal({u,me,save,onClose}){
   const l=u.color_light||'#FDF0F5'
 
   const saveStartDate=async()=>{
-    const start=new Date(startDate)
+    const start=new Date(startDate+'T00:00:00')
     const today=new Date()
+    today.setHours(0,0,0,0)
     const diff=Math.floor((today-start)/(1000*60*60*24))
     const day=Math.max(1,diff+1)
-    await save({start_date:startDate,day})
+    await save({start_date:startDate,day:day})
     setEditField(null)
+    onClose()
   }
 
   const saveColor=async()=>{
