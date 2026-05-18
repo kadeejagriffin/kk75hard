@@ -37,36 +37,38 @@ const {useState,useEffect,useCallback,useRef} = React;
 // ── API ───────────────────────────────────────────────────────────────
 const api = {
   getUser: async (name) => {
-    const r = await fetch(`/api/users?name=${encodeURIComponent(name)}`)
-    if (r.status === 404) return null
-    if (!r.ok) throw new Error('fetch failed')
-    return r.json()
+    const r = await fetch(`${SB_URL}/users?name=eq.${encodeURIComponent(name)}&limit=1`, { headers: SB_H })
+    const d = await r.json()
+    return d.length ? d[0] : null
   },
   createUser: async (data) => {
-    const r = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) })
-    if (!r.ok) throw new Error('create failed')
-    return r.json()
+    const r = await fetch(`${SB_URL}/users`, { method:'POST', headers:{...SB_H,'Prefer':'return=representation'}, body:JSON.stringify(data) })
+    const d = await r.json()
+    if (!r.ok) throw new Error(JSON.stringify(d))
+    return Array.isArray(d) ? d[0] : d
   },
   updateUser: async (data) => {
-    const r = await fetch('/api/users', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) })
-    if (!r.ok) throw new Error('update failed')
-    return r.json()
+    const r = await fetch(`${SB_URL}/users?name=eq.${encodeURIComponent(data.name)}`, { method:'PATCH', headers:{...SB_H,'Prefer':'return=representation'}, body:JSON.stringify(data) })
+    const d = await r.json()
+    if (!r.ok) throw new Error(JSON.stringify(d))
+    return Array.isArray(d) ? d[0] : data
   },
   getGroup: async (code) => {
-    const r = await fetch(`/api/groups?code=${encodeURIComponent(code)}`)
-    if (r.status === 404) return null
-    if (!r.ok) throw new Error('fetch failed')
-    return r.json()
+    const r = await fetch(`${SB_URL}/groups?code=eq.${encodeURIComponent(code.toUpperCase())}&limit=1`, { headers: SB_H })
+    const d = await r.json()
+    return d.length ? d[0] : null
   },
   createGroup: async (data) => {
-    const r = await fetch('/api/groups', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) })
-    if (!r.ok) throw new Error('create failed')
-    return r.json()
+    const r = await fetch(`${SB_URL}/groups`, { method:'POST', headers:{...SB_H,'Prefer':'return=representation'}, body:JSON.stringify(data) })
+    const d = await r.json()
+    if (!r.ok) throw new Error(JSON.stringify(d))
+    return Array.isArray(d) ? d[0] : d
   },
   updateGroup: async (data) => {
-    const r = await fetch('/api/groups', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) })
-    if (!r.ok) throw new Error('update failed')
-    return r.json()
+    const r = await fetch(`${SB_URL}/groups?code=eq.${encodeURIComponent(data.code)}`, { method:'PATCH', headers:{...SB_H,'Prefer':'return=representation'}, body:JSON.stringify(data) })
+    const d = await r.json()
+    if (!r.ok) throw new Error(JSON.stringify(d))
+    return Array.isArray(d) ? d[0] : data
   },
 }
 
