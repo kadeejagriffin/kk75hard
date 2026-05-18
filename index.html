@@ -509,7 +509,7 @@ function Home({u,me,setU,logout}){
       <div style={{height:'3px',background:'rgba(180,140,165,0.15)'}}>
         <div style={{height:'100%',background:`linear-gradient(90deg,${c},#FF6B4A,#FFB830)`,width:`${Math.min(100,((u.day||1)/(u.total_days||75))*100)}%`,transition:'width 0.5s'}}/>
       </div>
-      <div style={{flex:1,overflowY:'auto',paddingBottom:'80px'}}>
+      <div id="scroll-container" style={{flex:1,overflowY:'auto',paddingBottom:'80px'}}>
         {tab==='today'&&<Today u={u} me={me} save={save} checkin={checkin} groups={groups}/>}
         {tab==='goals'&&<Goals u={u} save={save}/>}
         {tab==='media'&&<Media u={u} save={save}/>}
@@ -517,7 +517,7 @@ function Home({u,me,setU,logout}){
         {tab==='group'&&<Squad u={u} me={me} groups={groups} mkGroup={mkGroup} joinGroup={joinGrp} heart={heartPost} affirm={affirmPost} postFeed={postFeed}/>}
       </div>
       <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'480px',background:'white',borderTop:'1px solid rgba(180,140,165,0.18)',display:'flex',padding:'8px 0',zIndex:100}}>
-        {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'3px 0',background:'none',border:'none',cursor:'pointer',color:tab===t.id?c:c+'88',transition:'color 0.15s'}}>
+        {tabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);document.querySelector('#scroll-container')?.scrollTo({top:0,behavior:'smooth'})}} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'3px 0',background:'none',border:'none',cursor:'pointer',color:tab===t.id?c:c+'88',transition:'color 0.15s'}}>
           <i className={`ti ${t.icon}`} style={{fontSize:'22px'}}/>
           <span style={{fontSize:'11px',fontWeight:'900',letterSpacing:'0.2px'}}>{t.lbl}</span>
           <div style={{width:'4px',height:'4px',borderRadius:'50%',background:c,opacity:tab===t.id?1:0,transition:'opacity 0.15s'}}/>
