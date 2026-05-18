@@ -1035,7 +1035,16 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220'}}>squad 👯‍♀️</h2>
           {ag&&<div style={{fontSize:'11px',color:'#A898B0'}}>{ag.name} · code: <strong style={{letterSpacing:'1px'}}>{ag.code}</strong></div>}
         </div>
-        <button onClick={()=>setView(view==='join'?'feed':'join')} style={{background:'#EEF7FF',color:'#1870BB',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'1px solid #A8D8FF',cursor:'pointer'}}>+ join more</button>
+        <div style={{display:'flex',gap:'6px'}}>
+          {ag&&<button onClick={()=>{
+            const msg=`hey! join me on magical sunshine 🌸\n\n1. open the app: https://magicalsunshine.netlify.app\n2. create your profile\n3. tap squad → join with code: ${ag.code}\n\nlet's do this together 🔥`
+            if(navigator.share){navigator.share({title:'join my 75 hard squad!',text:msg})}
+            else{navigator.clipboard.writeText(msg).then(()=>alert('invite copied to clipboard! 📋'))}
+          }} style={{background:'linear-gradient(135deg,#B5365F,#FF6B4A)',color:'white',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
+            <i className="ti ti-share" style={{fontSize:'13px'}}/> invite
+          </button>}
+          <button onClick={()=>setView(view==='join'?'feed':'join')} style={{background:'#EEF7FF',color:'#1870BB',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'1px solid #A8D8FF',cursor:'pointer'}}>+ join</button>
+        </div>
       </div>
       {view==='join'&&<div style={{background:'white',borderRadius:'14px',border:'1.5px solid #A8D8FF',padding:'13px',marginBottom:'11px'}}>
         <Input value={jc} onChange={v=>setJc(v.toUpperCase())} onEnter={doJoin} placeholder="enter code..." style={{fontSize:'16px',letterSpacing:'3px',textAlign:'center',fontWeight:'700',marginBottom:'9px'}}/>
