@@ -183,13 +183,22 @@ function Onboarding({username,onComplete}){
   const [wMedia,setWMedia]=useState(null)
   const [media,setMedia]=useState(DEF_MEDIA)
   const [saving,setSaving]=useState(false)
+  const [startDate,setStartDate]=useState('')
   const pct=(step/7)*100
   const addH=()=>{if(!nh.trim())return;setHabits(p=>[...p,{id:'c'+Date.now(),text:nh.trim(),cat:'custom'}]);setNh('')}
   const addG=()=>{if(!ng.trim())return;setGoals(p=>[...p,ng.trim()]);setNg('')}
   const finish=async()=>{
     setSaving(true)
+    // Calculate current day based on start date
+    let currentDay = 1
+    if (startDate) {
+      const start = new Date(startDate)
+      const today = new Date()
+      const diff = Math.floor((today - start) / (1000*60*60*24))
+      currentDay = Math.max(1, diff + 1)
+    }
     await onComplete({
-      color:col.c,color_light:col.l,total_days:days,why,
+      color:col.c,color_light:col.l,total_days:days,why,start_date:startDate||new Date().toDateString(),current_day:currentDay,
       tasks:{daily:habits.map(h=>({id:h.id,text:h.text,category:h.cat})),weekly:[{id:'w1',text:'check in on my goals',category:'growth'},{id:'w2',text:'plan next week',category:'growth'}],general:[]},
       goals:goals.map((g,i)=>({id:'g'+i,title:g,desc:'',status:''})),
       media_rules:wMedia?media:[],
@@ -250,6 +259,11 @@ function Onboarding({username,onComplete}){
                 <div style={{fontSize:'10px',color:'#A898B0',marginTop:'2px'}}>{desc}</div>
               </div>
             ))}
+          </div>
+          <div style={{marginBottom:'1.25rem'}}>
+            <label style={{fontSize:'11px',fontWeight:'700',color:'#6B5870',textTransform:'uppercase',letterSpacing:'0.8px',display:'block',marginBottom:'5px'}}>when are you starting? (or when did you start?)</label>
+            <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{width:'100%',padding:'11px 14px',borderRadius:'11px',border:`1.5px solid ${startDate?c.c:'rgba(180,140,165,0.35)'}`,fontSize:'14px',outline:'none',color:'#1A1220',fontFamily:'DM Sans,sans-serif'}}/>
+            <div style={{fontSize:'11px',color:'#A898B0',marginTop:'4px'}}>leave blank to start today</div>
           </div>
           <div style={{display:'flex',gap:'10px'}}>
             <button onClick={()=>setStep(2)} style={{flex:1,padding:'11px',borderRadius:'12px',border:`2px solid ${c.c}`,color:c.c,fontWeight:'700',background:'white',cursor:'pointer'}}>back</button>
@@ -362,6 +376,36 @@ function Home({u,me,setU,logout}){
     }catch{}
   },[u?.day])
 
+  const [quote,setQuote]=useState(null)
+  const [showProfile,setShowProfile]=useState(false)
+  useEffect(()=>{
+    if(!u)return
+    const today=new Date().toDateString()
+    const lastQuote=localStorage.getItem('quote_date_'+me)
+    if(lastQuote===today)return
+    const QUOTES=[
+      "you are becoming the person you've always wanted to be 🌸",
+      "every day you show up is a day you choose yourself 💜",
+      "progress over perfection, always ✨",
+      "you are stronger than you know 🔥",
+      "small steps every day lead to big changes 🌱",
+      "your consistency is your superpower 💎",
+      "today is another chance to be intentional 🌟",
+      "you deserve the life you're building 👑",
+      "rest if you must, but don't you quit 💪",
+      "the version of you 75 days from now will thank you 🌷",
+      "you are not behind. you are exactly where you need to be ✨",
+      "choosing yourself every day is the most powerful thing you can do 🌸",
+      "your future self is cheering you on right now 🎉",
+      "be patient with yourself. growth takes time 🌱",
+      "you've got this. you always have 💜",
+    ]
+    const q=QUOTES[Math.floor(Math.random()*QUOTES.length)]
+    setQuote(q)
+    localStorage.setItem('quote_date_'+me,today)
+    setTimeout(()=>setQuote(null),8000)
+  },[u?.name])
+
   const loadGroups=useCallback(async()=>{
     if(!u?.groups?.length)return
     const gs=await Promise.all(u.groups.map(code=>api.getGroup(code).catch(()=>null)))
@@ -453,7 +497,9 @@ function Home({u,me,setU,logout}){
       <div style={{background:'white',padding:'14px 18px 10px',borderBottom:'1px solid rgba(180,140,165,0.18)',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:100}}>
         <div>
           <div style={{fontFamily:'Playfair Display,serif',fontSize:'19px',color:c,fontWeight:'700'}}>magical sunshine 🌸</div>
-          <div style={{fontSize:'11px',color:'#A898B0'}}>hey {u.name} · day {u.day||1} of {u.total_days||75}</div>
+          <button onClick={()=>setShowProfile(true)} style={{fontSize:'11px',color:'#A898B0',background:'none',border:'none',cursor:'pointer',padding:0,textAlign:'left',display:'flex',alignItems:'center',gap:'4px'}}>
+            hey {u.name} · day {u.day||1} of {u.total_days||75} <i className="ti ti-chevron-down" style={{fontSize:'10px'}}/>
+          </button>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
           <div style={{background:c,color:'white',borderRadius:'20px',padding:'4px 11px',fontSize:'11px',fontWeight:'700'}}>🔥 {u.day||1}/{u.total_days||75}</div>
@@ -477,6 +523,12 @@ function Home({u,me,setU,logout}){
           <div style={{width:'4px',height:'4px',borderRadius:'50%',background:c,opacity:tab===t.id?1:0,transition:'opacity 0.15s'}}/>
         </button>)}
       </div>
+      {showProfile&&<ProfileModal u={u} me={me} save={save} onClose={()=>setShowProfile(false)}/>}
+      {quote&&<div style={{position:'fixed',top:'20px',left:'50%',transform:'translateX(-50%)',zIndex:150,background:'white',borderRadius:'16px',padding:'14px 18px',maxWidth:'320px',width:'90%',boxShadow:'0 8px 32px rgba(181,54,95,0.2)',border:'1px solid #F4ADCA',animation:'fadeUp 0.4s ease'}}>
+        <div style={{fontSize:'11px',fontWeight:'700',color:'#B5365F',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'5px'}}>✨ good morning</div>
+        <div style={{fontSize:'13px',color:'#6B5870',lineHeight:1.6,fontStyle:'italic'}}>"{quote}"</div>
+        <button onClick={()=>setQuote(null)} style={{position:'absolute',top:'10px',right:'12px',color:'#A898B0',fontSize:'16px',background:'none',border:'none',cursor:'pointer'}}>×</button>
+      </div>}
       {ms&&<div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(20,10,30,0.6)',display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}} onClick={()=>setMs(null)}>
         <div onClick={e=>e.stopPropagation()} style={{background:'white',borderRadius:'22px',padding:'28px 22px',textAlign:'center',maxWidth:'300px',width:'100%',boxShadow:'0 20px 60px rgba(181,54,95,0.3)'}}>
           <div style={{fontSize:'56px',marginBottom:'10px'}}>{ms.emoji}</div>
@@ -569,10 +621,10 @@ function Today({u,me,save,checkin,groups}){
                   </div>
                 ):(
                   <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 14px',borderBottom:i<items.length-1?'1px solid rgba(180,140,165,0.12)':'none',background:isDone?cs.bg:'white',transition:'background 0.15s'}}>
-                    <div onClick={()=>!h.isMedia&&toggle(h.id)} style={{width:'22px',height:'22px',borderRadius:'50%',flexShrink:0,background:isDone?cs.tx:'white',border:isDone?'none':`2px solid ${cs.br}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s',cursor:h.isMedia?'default':'pointer'}}>
+                    <div onClick={()=>toggle(h.id)} style={{width:'22px',height:'22px',borderRadius:'50%',flexShrink:0,background:isDone?cs.tx:'white',border:isDone?'none':`2px solid ${cs.br}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.2s',cursor:'pointer'}}>
                       {isDone&&<i className="ti ti-check" style={{fontSize:'12px',color:'white'}}/>}
                     </div>
-                    <span onClick={()=>!h.isMedia&&toggle(h.id)} style={{fontSize:'13px',flex:1,color:isDone?'#A898B0':'#1A1220',textDecoration:isDone?'line-through':'none',cursor:h.isMedia?'default':'pointer'}}>{h.text}</span>
+                    <span onClick={()=>toggle(h.id)} style={{fontSize:'13px',flex:1,color:isDone?'#A898B0':'#1A1220',textDecoration:isDone?'line-through':'none',cursor:'pointer'}}>{h.text}</span>
                     {!h.isMedia&&<div style={{display:'flex',gap:'5px'}}>
                       <button onClick={()=>{setEditHabit(h.id);setEditText(h.text)}} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer',padding:'2px'}}><i className="ti ti-pencil" style={{fontSize:'13px'}}/></button>
                       <button onClick={()=>deleteHabit(h.id)} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer',padding:'2px'}}><i className="ti ti-trash" style={{fontSize:'13px'}}/></button>
@@ -1040,6 +1092,172 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
   )
 }
 
+// ── PROFILE MODAL ────────────────────────────────────────────────────
+function ProfileModal({u,me,save,onClose}){
+  const [editField,setEditField]=useState(null)
+  const [startDate,setStartDate]=useState(()=>{
+    if(u.start_date){
+      try{
+        const d=new Date(u.start_date)
+        if(!isNaN(d)){return d.toISOString().split('T')[0]}
+      }catch{}
+    }
+    return new Date().toISOString().split('T')[0]
+  })
+  const [pin,setPin]=useState('')
+  const [pin2,setPin2]=useState('')
+  const [pinMsg,setPinMsg]=useState('')
+  const [color,setColor]=useState(COLORS.find(x=>x.c===u.color)||COLORS[0])
+  const c=u.color||'#B5365F'
+  const l=u.color_light||'#FDF0F5'
+
+  const saveStartDate=async()=>{
+    const start=new Date(startDate)
+    const today=new Date()
+    const diff=Math.floor((today-start)/(1000*60*60*24))
+    const day=Math.max(1,diff+1)
+    await save({start_date:startDate,day})
+    setEditField(null)
+  }
+
+  const saveColor=async()=>{
+    await save({color:color.c,color_light:color.l})
+    setEditField(null)
+    onClose()
+  }
+
+  const savePin=async()=>{
+    if(pin.length<4){setPinMsg('PIN needs 4 digits');return}
+    if(pin!==pin2){setPinMsg("PINs don't match");return}
+    await save({pin})
+    setPinMsg('PIN updated! ✓')
+    setPin('');setPin2('')
+    setTimeout(()=>setPinMsg(''),2000)
+  }
+
+  const totalDays=u.total_days||75
+  const day=u.day||1
+  const pct=Math.min(100,Math.round((day/totalDays)*100))
+  const startDisplay=u.start_date?new Date(u.start_date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'not set'
+
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(20,10,30,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'0'}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:'white',borderRadius:'0 0 24px 24px',padding:'20px',width:'100%',maxWidth:'480px',boxShadow:'0 8px 40px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'}}>
+
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'20px',color:'#1A1220'}}>my profile ✨</h2>
+          <button onClick={onClose} style={{color:'#A898B0',fontSize:'20px',background:'none',border:'none',cursor:'pointer'}}>×</button>
+        </div>
+
+        {/* Stats bar */}
+        <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'13px',padding:'12px 14px',marginBottom:'16px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px'}}>
+            <div style={{fontSize:'13px',fontWeight:'700',color:c}}>day {day} of {totalDays}</div>
+            <div style={{fontSize:'12px',color:'#A898B0'}}>{pct}% complete</div>
+          </div>
+          <div style={{height:'6px',background:'white',borderRadius:'10px',overflow:'hidden'}}>
+            <div style={{height:'100%',width:`${pct}%`,background:`linear-gradient(90deg,${c},#FF6B4A)`,borderRadius:'10px',transition:'width 0.5s'}}/>
+          </div>
+          <div style={{fontSize:'11px',color:'#A898B0',marginTop:'6px'}}>started {startDisplay}</div>
+        </div>
+
+        {/* Start date */}
+        <div style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.2)',padding:'13px 14px',marginBottom:'10px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:editField==='date'?'10px':'0'}}>
+            <div>
+              <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220'}}>challenge start date</div>
+              <div style={{fontSize:'11px',color:'#A898B0',marginTop:'2px'}}>{startDisplay}</div>
+            </div>
+            <button onClick={()=>setEditField(editField==='date'?null:'date')} style={{background:l,color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>edit</button>
+          </div>
+          {editField==='date'&&<div>
+            <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} style={{width:'100%',padding:'10px 13px',borderRadius:'10px',border:`1.5px solid ${c}`,fontSize:'14px',outline:'none',marginBottom:'8px',fontFamily:'DM Sans,sans-serif'}}/>
+            <div style={{fontSize:'11px',color:'#A898B0',marginBottom:'8px'}}>this will recalculate your current day automatically</div>
+            <div style={{display:'flex',gap:'7px'}}>
+              <button onClick={saveStartDate} style={{background:c,color:'white',borderRadius:'9px',padding:'7px 16px',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>save & recalculate</button>
+              <button onClick={()=>setEditField(null)} style={{color:'#A898B0',fontSize:'12px',background:'none',border:'none',cursor:'pointer'}}>cancel</button>
+            </div>
+          </div>}
+        </div>
+
+        {/* Color */}
+        <div style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.2)',padding:'13px 14px',marginBottom:'10px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:editField==='color'?'10px':'0'}}>
+            <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+              <div style={{width:'24px',height:'24px',borderRadius:'50%',background:c}}/>
+              <div>
+                <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220'}}>signature color</div>
+                <div style={{fontSize:'11px',color:'#A898B0',marginTop:'2px'}}>{COLORS.find(x=>x.c===u.color)?.name||'rose 🌹'}</div>
+              </div>
+            </div>
+            <button onClick={()=>setEditField(editField==='color'?null:'color')} style={{background:l,color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>change</button>
+          </div>
+          {editField==='color'&&<div>
+            <div style={{display:'flex',flexDirection:'column',gap:'6px',marginBottom:'10px'}}>
+              {COLORS.map(x=>(
+                <div key={x.id} onClick={()=>setColor(x)} style={{display:'flex',alignItems:'center',gap:'10px',padding:'9px 11px',borderRadius:'11px',border:`2px solid ${color.id===x.id?x.c:'transparent'}`,background:color.id===x.id?x.l:'#F9F5F7',cursor:'pointer',transition:'all 0.15s'}}>
+                  <div style={{width:'24px',height:'24px',borderRadius:'50%',background:x.c,flexShrink:0}}/>
+                  <div style={{flex:1}}><div style={{fontSize:'12px',fontWeight:'700',color:x.c}}>{x.name}</div><div style={{fontSize:'10px',color:'#A898B0'}}>{x.d}</div></div>
+                  <div style={{width:'16px',height:'16px',borderRadius:'50%',background:color.id===x.id?x.c:'white',border:`2px solid ${color.id===x.id?x.c:'#ddd'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'9px',color:'white',fontWeight:'900'}}>{color.id===x.id&&'✓'}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:'flex',gap:'7px'}}>
+              <button onClick={saveColor} style={{background:color.c,color:'white',borderRadius:'9px',padding:'7px 16px',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>save color</button>
+              <button onClick={()=>setEditField(null)} style={{color:'#A898B0',fontSize:'12px',background:'none',border:'none',cursor:'pointer'}}>cancel</button>
+            </div>
+          </div>}
+        </div>
+
+        {/* Change PIN */}
+        <div style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.2)',padding:'13px 14px',marginBottom:'10px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:editField==='pin'?'10px':'0'}}>
+            <div>
+              <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220'}}>PIN</div>
+              <div style={{fontSize:'11px',color:'#A898B0',marginTop:'2px'}}>• • • •</div>
+            </div>
+            <button onClick={()=>setEditField(editField==='pin'?null:'pin')} style={{background:l,color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>change</button>
+          </div>
+          {editField==='pin'&&<div>
+            <input type="password" inputMode="numeric" value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="new PIN" style={{width:'100%',padding:'9px 12px',borderRadius:'9px',border:`1.5px solid ${c}`,fontSize:'16px',letterSpacing:'6px',textAlign:'center',outline:'none',marginBottom:'7px',fontFamily:'DM Sans,sans-serif'}}/>
+            <input type="password" inputMode="numeric" value={pin2} onChange={e=>setPin2(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="confirm PIN" style={{width:'100%',padding:'9px 12px',borderRadius:'9px',border:'1.5px solid rgba(180,140,165,0.35)',fontSize:'16px',letterSpacing:'6px',textAlign:'center',outline:'none',marginBottom:'7px',fontFamily:'DM Sans,sans-serif'}}/>
+            {pinMsg&&<div style={{fontSize:'12px',color:pinMsg.includes('✓')?'#1E6E44':'#B5365F',marginBottom:'7px'}}>{pinMsg}</div>}
+            <div style={{display:'flex',gap:'7px'}}>
+              <button onClick={savePin} style={{background:c,color:'white',borderRadius:'9px',padding:'7px 16px',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>save PIN</button>
+              <button onClick={()=>setEditField(null)} style={{color:'#A898B0',fontSize:'12px',background:'none',border:'none',cursor:'pointer'}}>cancel</button>
+            </div>
+          </div>}
+        </div>
+
+        {/* Challenge length */}
+        <div style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.2)',padding:'13px 14px',marginBottom:'10px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:editField==='length'?'10px':'0'}}>
+            <div>
+              <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220'}}>challenge length</div>
+              <div style={{fontSize:'11px',color:'#A898B0',marginTop:'2px'}}>{totalDays} days</div>
+            </div>
+            <button onClick={()=>setEditField(editField==='length'?null:'length')} style={{background:l,color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>edit</button>
+          </div>
+          {editField==='length'&&<div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'7px',marginBottom:'10px'}}>
+              {[[30,'solid start'],[60,'real habits'],[75,'the classic'],[100,'all in']].map(([d,desc])=>(
+                <div key={d} onClick={()=>save({total_days:d})} style={{padding:'11px',borderRadius:'11px',textAlign:'center',cursor:'pointer',border:`2px solid ${totalDays===d?c:'transparent'}`,background:totalDays===d?l:'#F9F5F7',transition:'all 0.15s'}}>
+                  <div style={{fontSize:'16px',fontWeight:'900',color:totalDays===d?c:'#1A1220'}}>{d}</div>
+                  <div style={{fontSize:'10px',color:'#A898B0'}}>{desc}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>setEditField(null)} style={{color:'#A898B0',fontSize:'12px',background:'none',border:'none',cursor:'pointer'}}>done</button>
+          </div>}
+        </div>
+
+        <button onClick={onClose} style={{width:'100%',padding:'12px',borderRadius:'12px',background:c,color:'white',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer',marginTop:'4px'}}>done ✓</button>
+      </div>
+    </div>
+  )
+}
+
 // ── APP ROOT ──────────────────────────────────────────────────────────
 function App(){
   const [screen,setScreen]=useState('auth')
@@ -1056,7 +1274,7 @@ function App(){
         setMe(name);setU(user)
         setScreen(user.onboarded?'home':'onboarding')
       }else{
-        const newUser={name,pin,onboarded:false,day:1,total_days:75,color:'#B5365F',color_light:'#FDF0F5',tasks:{daily:[],weekly:[],general:[]},goals:[],media_rules:[],why:'',groups:[]}
+        const newUser={name,pin,onboarded:false,day:1,total_days:75,color:'#B5365F',color_light:'#FDF0F5',tasks:{daily:[],weekly:[],general:[]},goals:[],media_rules:[],why:'',groups:[],checkins:{},weekly_done:{}}
         await api.createUser(newUser)
         setMe(name);setU(newUser)
         setScreen('onboarding')
@@ -1071,7 +1289,7 @@ function App(){
   }
 
   const complete=async(profile)=>{
-    const updated={...u,...profile,onboarded:true,day:1,start_date:new Date().toDateString()}
+    const updated={...u,...profile,onboarded:true,day:profile.current_day||1}
     await api.updateUser(updated)
     setU(updated)
     setScreen('home')
