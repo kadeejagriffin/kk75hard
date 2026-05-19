@@ -1210,7 +1210,7 @@ function Nourish({u,me,save}){
         <div onClick={()=>setView('plan')} style={{background:`linear-gradient(135deg,${c},#FF6B4A)`,borderRadius:'16px',padding:'16px',cursor:'pointer',color:'white'}}>
           <div style={{fontSize:'22px',marginBottom:'6px'}}>🍽️</div>
           <div style={{fontSize:'13px',fontWeight:'700'}}>meal plan</div>
-          <div style={{fontSize:'10px',opacity:0.85,marginTop:'2px'}}>{mealPlan?`generated ${mealPlan.generated}`:'not set up yet'}</div>
+          <div style={{fontSize:'10px',opacity:0.85,marginTop:'2px'}}>{mealPlan?`generated ${mealPlan.generated}`:u.nourish_setup?'ready to generate!':'set preferences first'}</div>
         </div>
         <div onClick={()=>setView('grocery')} style={{background:'linear-gradient(135deg,#1E6E44,#52CC8A)',borderRadius:'16px',padding:'16px',cursor:'pointer',color:'white'}}>
           <div style={{fontSize:'22px',marginBottom:'6px'}}>🛒</div>
@@ -1251,7 +1251,7 @@ function Nourish({u,me,save}){
         <div style={{fontSize:'28px',marginBottom:'8px'}}>🍽️</div>
         <div style={{fontSize:'14px',fontWeight:'700',color:c,marginBottom:'4px'}}>no meal plan yet</div>
         <div style={{fontSize:'12px',color:'#A898B0',marginBottom:'12px'}}>set up your preferences and let AI generate a personalized weekly plan!</div>
-        <button onClick={()=>setView('setup')} style={{background:c,color:'white',borderRadius:'12px',padding:'10px 22px',fontWeight:'900',fontSize:'13px',border:'none',cursor:'pointer'}}>get started ✨</button>
+        <button onClick={()=>setView('setup')} style={{background:c,color:'white',borderRadius:'12px',padding:'10px 22px',fontWeight:'900',fontSize:'13px',border:'none',cursor:'pointer'}}>set my preferences ✨</button>
       </div>}
     </div>
   )
@@ -1304,7 +1304,7 @@ function Nourish({u,me,save}){
       </div>
 
       <button onClick={savePrefs} style={{width:'100%',padding:'13px',borderRadius:'12px',background:c,color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer',marginBottom:'8px'}}>save preferences ✓</button>
-      {u.nourish_setup&&<button onClick={()=>{savePrefs();setTimeout(()=>generateMealPlan(),500)}} style={{width:'100%',padding:'13px',borderRadius:'12px',background:'linear-gradient(135deg,#1E6E44,#52CC8A)',color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer'}}>save & generate new meal plan 🤖</button>}
+      <button onClick={async()=>{await savePrefs();generateMealPlan()}} style={{width:'100%',padding:'13px',borderRadius:'12px',background:'linear-gradient(135deg,#1E6E44,#52CC8A)',color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer'}}>save & generate meal plan 🤖</button>
     </div>
   )
 
@@ -1324,8 +1324,11 @@ function Nourish({u,me,save}){
       {!mealPlan&&!loading&&<div style={{textAlign:'center',padding:'40px 20px'}}>
         <div style={{fontSize:'32px',marginBottom:'12px'}}>🤖</div>
         <div style={{fontSize:'14px',fontWeight:'700',color:'#1A1220',marginBottom:'6px'}}>ready to generate your meal plan?</div>
-        <div style={{fontSize:'12px',color:'#A898B0',marginBottom:'16px'}}>AI will create a personalized weekly plan based on your preferences</div>
-        <button onClick={generateMealPlan} style={{background:c,color:'white',borderRadius:'12px',padding:'12px 24px',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>generate my meal plan ✨</button>
+        <div style={{fontSize:'12px',color:'#A898B0',marginBottom:'16px'}}>{u.nourish_setup?'your preferences are saved — generate when ready!':'set up your food preferences first so the AI can personalize your plan'}</div>
+        {u.nourish_setup
+          ? <button onClick={generateMealPlan} style={{background:c,color:'white',borderRadius:'12px',padding:'12px 24px',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>generate my meal plan ✨</button>
+          : <button onClick={()=>setView('setup')} style={{background:c,color:'white',borderRadius:'12px',padding:'12px 24px',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>set my preferences first →</button>
+        }
       </div>}
 
       {loading&&<div style={{textAlign:'center',padding:'40px 20px'}}>
