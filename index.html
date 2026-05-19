@@ -409,11 +409,15 @@ function Home({u,me,setU,logout}){
 
   const loadGroups=useCallback(async()=>{
     if(!u?.groups?.length)return
+    // Always fetch fresh from Supabase to get latest posts from all members
     const gs=await Promise.all(u.groups.map(code=>api.getGroup(code).catch(()=>null)))
     setGroups(gs.filter(Boolean))
-  },[u?.groups?.join(',')])
+  },[u?.groups?.length])
 
-  useEffect(()=>{loadGroups()},[loadGroups])
+  useEffect(()=>{loadGroups()},[u?.groups?.length])
+
+  // Also expose refreshGroups for Squad tab
+  const refreshGroups=loadGroups
 
   const save=async(updates)=>{
     const updated={...u,...updates}
@@ -456,37 +460,36 @@ function Home({u,me,setU,logout}){
   }
 
   const postFeed=async(code,type,content)=>{
-    const g=groups.find(x=>x.code===code)
+    // Always fetch fresh to avoid overwriting other members' posts
+    const g=await api.getGroup(code)||groups.find(x=>x.code===code)
     if(!g)return
     const post={id:Date.now()+Math.random(),user:me,type,content,ts:Date.now(),hearts:[],affirmations:[]}
     const updated={...g,feed:[post,...(g.feed||[]).slice(0,49)]}
     await api.updateGroup(updated)
-    loadGroups()
+    await loadGroups()
   }
 
   const heartPost=async(code,pid)=>{
-    const g=groups.find(x=>x.code===code)
+    const g=await api.getGroup(code)||groups.find(x=>x.code===code)
     if(!g)return
     const feed=(g.feed||[]).map(p=>{
       if(p.id!==pid)return p
-      const hearts=p.hearts.includes(me)?p.hearts.filter(x=>x!==me):[...p.hearts,me]
+      const hearts=(p.hearts||[]).includes(me)?p.hearts.filter(x=>x!==me):[...p.hearts,me]
       return{...p,hearts}
     })
-    const updated={...g,feed}
-    await api.updateGroup(updated)
-    loadGroups()
+    await api.updateGroup({...g,feed})
+    await loadGroups()
   }
 
   const affirmPost=async(code,pid,text)=>{
-    const g=groups.find(x=>x.code===code)
+    const g=await api.getGroup(code)||groups.find(x=>x.code===code)
     if(!g)return
     const feed=(g.feed||[]).map(p=>{
       if(p.id!==pid)return p
       return{...p,affirmations:[...(p.affirmations||[]),{user:me,text,ts:Date.now()}]}
     })
-    const updated={...g,feed}
-    await api.updateGroup(updated)
-    loadGroups()
+    await api.updateGroup({...g,feed})
+    await loadGroups()
   }
 
   if(!u)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><Spinner/></div>
@@ -516,7 +519,7 @@ function Home({u,me,setU,logout}){
         {tab==='media'&&<Media u={u} save={save}/>}
         {tab==='tasks'&&<Tasks u={u} save={save}/>}
         {tab==='nourish'&&<Nourish u={u} me={me} save={save}/>}
-        {tab==='group'&&<Squad u={u} me={me} groups={groups} mkGroup={mkGroup} joinGroup={joinGrp} heart={heartPost} affirm={affirmPost} postFeed={postFeed}/>}
+        {tab==='group'&&<Squad u={u} me={me} groups={groups} mkGroup={mkGroup} joinGroup={joinGrp} heart={heartPost} affirm={affirmPost} postFeed={postFeed} refreshGroups={refreshGroups}/>}
       </div>
       <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'480px',background:'white',borderTop:'1px solid rgba(180,140,165,0.18)',display:'flex',padding:'8px 0',zIndex:100}}>
         {tabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);document.querySelector('#scroll-container')?.scrollTo({top:0,behavior:'smooth'})}} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'3px 0',background:'none',border:'none',cursor:'pointer',color:tab===t.id?c:c+'88',transition:'color 0.15s'}}>
@@ -539,7 +542,13 @@ function Home({u,me,setU,logout}){
           <div style={{fontSize:'56px',marginBottom:'10px'}}>{ms.emoji}</div>
           <div style={{fontFamily:'Playfair Display,serif',fontSize:'24px',fontWeight:'700',color:c,marginBottom:'8px'}}>{ms.title}</div>
           <div style={{fontSize:'14px',color:'#6B5870',lineHeight:1.6,marginBottom:'20px'}}>{ms.msg}</div>
-          <button onClick={()=>setMs(null)} style={{width:'100%',padding:'12px',borderRadius:'12px',background:c,color:'white',fontSize:'14px',fontWeight:'900',border:'none',cursor:'pointer'}}>let's keep going 🔥</button>
+          <button onClick={()=>setMs(null)} style={{width:'100%',padding:'12px',borderRadius:'12px',background:c,color:'white',fontSize:'14px',fontWeight:'900',border:'none',cursor:'pointer',marginBottom:'8px'}}>let's keep going 🔥</button>
+          {groups.length>0&&<button onClick={async()=>{
+            for(const g of groups){
+              await postToFeed(g.code,'milestone',{text:`just hit a milestone: ${ms.title} ${ms.emoji} — day ${u.day||1} of ${u.total_days||75}!`,milestone:ms.title,emoji:ms.emoji})
+            }
+            setMs(null)
+          }} style={{width:'100%',padding:'10px',borderRadius:'12px',border:`2px solid ${c}`,color:c,fontSize:'13px',fontWeight:'700',background:'white',cursor:'pointer'}}>share to squad 📣</button>}
         </div>
       </div>}
     </div>
@@ -984,7 +993,7 @@ function TRow({t,onT,onU,onR,last,isDone,c='#B5365F'}){
 }
 
 // ── SQUAD ─────────────────────────────────────────────────────────────
-function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
+function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed,refreshGroups}){
   const [view,setView]=useState('feed')
   const [gn,setGn]=useState('')
   const [jc,setJc]=useState('')
@@ -993,9 +1002,30 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
   const [sharing,setSharing]=useState(false)
   const [affFor,setAffFor]=useState(null)
   const [loading,setLoading]=useState(false)
+  const [commenting,setCommenting]=useState(null)
+  const [commentText,setCommentText]=useState('')
+  const [refreshing,setRefreshing]=useState(false)
+  const [activeGroup,setActiveGroup]=useState(0)
   const c=u.color||'#B5365F'
   const l=u.color_light||'#FDF0F5'
-  const ag=groups[0]
+  const ag=groups[activeGroup]||groups[0]
+
+  useEffect(()=>{
+    if(refreshGroups)refreshGroups()
+  },[])
+
+  const doRefresh=async()=>{
+    setRefreshing(true)
+    if(refreshGroups)await refreshGroups()
+    setRefreshing(false)
+  }
+
+  const submitComment=async(postId)=>{
+    if(!commentText.trim()||!ag)return
+    await affirm(ag.code,postId,commentText.trim())
+    setCommentText('')
+    setCommenting(null)
+  }
   const ago=ts=>{const m=Math.floor((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago'}
   const doCreate=async()=>{if(!gn.trim())return;setLoading(true);const code=await mkGroup(gn.trim());setMsg(`created! share code: ${code} 🎉`);setGn('');setView('feed');setLoading(false)}
   const doJoin=async()=>{setLoading(true);const ok=await joinGroup(jc.trim().toUpperCase());if(ok){setMsg('joined! 🌸');setJc('');setView('feed');}else setMsg('code not found — check it again!');setLoading(false)}
@@ -1045,6 +1075,7 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
           }} style={{background:'linear-gradient(135deg,#B5365F,#FF6B4A)',color:'white',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
             <i className="ti ti-share" style={{fontSize:'13px'}}/> invite
           </button>}
+          <button onClick={doRefresh} style={{background:refreshing?l:'#F9F5F7',color:c,borderRadius:'10px',padding:'5px 10px',fontSize:'14px',fontWeight:'700',border:`1px solid ${c}44`,cursor:'pointer'}}>{refreshing?'...':'↻'}</button>
           <button onClick={()=>setView(view==='join'?'feed':'join')} style={{background:'#EEF7FF',color:'#1870BB',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'1px solid #A8D8FF',cursor:'pointer'}}>+ join</button>
         </div>
       </div>
@@ -1074,7 +1105,7 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
           <div style={{display:'flex',alignItems:'center',gap:'9px',padding:'11px 13px 7px'}}>
             <div style={{width:'30px',height:'30px',borderRadius:'50%',background:`linear-gradient(135deg,${c},#FF6B4A)`,color:'white',fontSize:'13px',fontWeight:'700',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{post.user&&post.user[0]&&post.user[0].toUpperCase()}</div>
             <div style={{flex:1}}><div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220'}}>{post.user}</div><div style={{fontSize:'10px',color:'#A898B0'}}>{ago(post.ts)}</div></div>
-            <span style={{fontSize:'16px'}}>{post.type==='win'?'🏆':'🔥'}</span>
+            <span style={{fontSize:'16px'}}>{post.type==='win'?'🏆':post.type==='milestone'?'⭐':'🔥'}</span>
           </div>
           <div style={{fontSize:'13px',color:'#6B5870',padding:'0 13px 9px',lineHeight:1.5}}>{post.content?.text}</div>
           {post.content?.done!==undefined&&<div style={{display:'flex',gap:'5px',padding:'0 13px 9px'}}>
@@ -1085,18 +1116,24 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
             {post.affirmations.map((a,i)=><div key={i} style={{fontSize:'12px',color:c,marginBottom:i<post.affirmations.length-1?'3px':0}}><strong>{a.user}:</strong> {a.text}</div>)}
           </div>}
           <div style={{borderTop:'1px solid rgba(180,140,165,0.12)',padding:'8px 13px',display:'flex',gap:'12px',alignItems:'center'}}>
-            <button onClick={()=>heart(ag.code,post.id)} style={{display:'flex',alignItems:'center',gap:'5px',color:'#B5365F',fontWeight:'900',fontSize:'14px',background:'none',border:'none',cursor:'pointer'}}>
-              <i className="ti ti-heart" style={{fontSize:'20px',color:'#B5365F'}}/>
-              <span style={{fontSize:'15px',fontWeight:'900',color:'#B5365F'}}>{post.hearts?.length>0?post.hearts.length:''}</span>
+            <button onClick={()=>heart(ag.code,post.id)} style={{display:'flex',alignItems:'center',gap:'5px',color:post.hearts?.includes(me)?'#B5365F':'#A898B0',fontWeight:'900',fontSize:'14px',background:'none',border:'none',cursor:'pointer',transition:'color 0.15s'}}>
+              <i className="ti ti-heart" style={{fontSize:'20px',color:post.hearts?.includes(me)?'#B5365F':'#A898B0'}}/>
+              <span style={{fontSize:'14px',fontWeight:'900'}}>{post.hearts?.length>0?post.hearts.length:''}</span>
             </button>
-            <button onClick={()=>setAffFor(affFor===post.id?null:post.id)} style={{display:'flex',alignItems:'center',gap:'5px',color:'#B5365F',fontSize:'12px',fontWeight:'900',border:'2px solid #B5365F',borderRadius:'20px',padding:'4px 12px',background:'white',cursor:'pointer'}}>
-              <i className="ti ti-message-circle" style={{fontSize:'14px'}}/> cheer
+            <span style={{fontSize:'12px',color:'#E0D0D8'}}>·</span>
+            <span style={{fontSize:'12px',color:'#A898B0'}}>{post.affirmations?.length>0?`${post.affirmations.length} comment${post.affirmations.length>1?'s':''}`:'no comments'}</span>
+            <button onClick={()=>{setAffFor(affFor===post.id?null:post.id);setCommenting(commenting===post.id?null:post.id);setCommentText('')}} style={{display:'flex',alignItems:'center',gap:'5px',color:'#B5365F',fontSize:'12px',fontWeight:'900',border:'2px solid #B5365F',borderRadius:'20px',padding:'4px 12px',background:(affFor===post.id||commenting===post.id)?'#FDF0F5':'white',cursor:'pointer'}}>
+              <i className="ti ti-message-circle" style={{fontSize:'14px'}}/> comment
             </button>
           </div>
-          {affFor===post.id&&<div style={{borderTop:'1px solid rgba(180,140,165,0.12)',padding:'10px 13px',background:l}}>
-            <div style={{fontSize:'10px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:'7px'}}>send an affirmation 💜</div>
+          {(affFor===post.id||commenting===post.id)&&<div style={{borderTop:'1px solid rgba(180,140,165,0.12)',padding:'10px 13px',background:l}}>
+            <div style={{display:'flex',gap:'7px',marginBottom:'10px'}}>
+              <input autoFocus value={commentText} onChange={e=>setCommentText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submitComment(post.id)} placeholder="write a comment..." style={{flex:1,padding:'9px 12px',borderRadius:'10px',border:`1.5px solid ${c}`,fontSize:'14px',outline:'none',fontFamily:'DM Sans,sans-serif',background:'white'}}/>
+              <button onClick={()=>submitComment(post.id)} style={{padding:'0 14px',borderRadius:'10px',background:c,color:'white',fontWeight:'900',fontSize:'13px',border:'none',cursor:'pointer'}}>send</button>
+            </div>
+            <div style={{fontSize:'10px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:'6px'}}>or send a quick cheer</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:'5px'}}>
-              {AFFIRMATIONS.map((a,i)=><button key={i} onClick={()=>{affirm(ag.code,post.id,a);setAffFor(null)}} style={{padding:'5px 11px',borderRadius:'20px',fontSize:'11px',fontWeight:'600',background:'white',color:c,border:`1px solid ${c}44`,cursor:'pointer'}}>{a}</button>)}
+              {AFFIRMATIONS.map((a,i)=><button key={i} onClick={()=>{affirm(ag.code,post.id,a);setAffFor(null);setCommenting(null)}} style={{padding:'5px 11px',borderRadius:'20px',fontSize:'11px',fontWeight:'600',background:'white',color:c,border:`1px solid ${c}44`,cursor:'pointer'}}>{a}</button>)}
             </div>
           </div>}
         </div>
@@ -1844,18 +1881,20 @@ function App(){
   const [u,setU]=useState(null)
   const [loading,setLoading]=useState(false)
 
-  const login=async(name,pin)=>{
+  const login=async(name,pin,skipPin=false)=>{
     setLoading(true)
     try{
       const user=await api.getUser(name)
       if(user){
-        if(user.pin!==pin){setLoading(false);return false}
+        if(!skipPin&&user.pin!==pin){setLoading(false);return false}
         setMe(name);setU(user)
+        localStorage.setItem('ms_session',JSON.stringify({name,pin:user.pin}))
         setScreen(user.onboarded?'home':'onboarding')
       }else{
         const newUser={name,pin,onboarded:false,day:1,total_days:75,color:'#B5365F',color_light:'#FDF0F5',tasks:{daily:[],weekly:[],general:[]},goals:[],media_rules:[],why:'',groups:[],checkins:{},weekly_done:{}}
         await api.createUser(newUser)
         setMe(name);setU(newUser)
+        localStorage.setItem('ms_session',JSON.stringify({name,pin}))
         setScreen('onboarding')
       }
     }catch(e){
@@ -1866,6 +1905,21 @@ function App(){
     setLoading(false)
     return true
   }
+
+  // Auto-login on app load - using ref to avoid stale closure
+  const loginRef = React.useRef(login)
+  loginRef.current = login
+  useEffect(()=>{
+    const session=localStorage.getItem('ms_session')
+    if(session){
+      try{
+        const {name,pin}=JSON.parse(session)
+        if(name&&pin)loginRef.current(name,pin,true)
+      }catch(e){
+        localStorage.removeItem('ms_session')
+      }
+    }
+  },[])
 
   const complete=async(profile)=>{
     setLoading(true)
@@ -1911,7 +1965,7 @@ function App(){
 
   if(screen==='auth')return<Auth onLogin={login}/>
   if(screen==='onboarding')return<Onboarding username={me} onComplete={complete}/>
-  return<Home u={u} me={me} setU={setU} logout={()=>{setMe(null);setU(null);setScreen('auth')}}/>
+  return<Home u={u} me={me} setU={setU} logout={()=>{setMe(null);setU(null);setScreen('auth');localStorage.removeItem('ms_session')}}/>
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>)
