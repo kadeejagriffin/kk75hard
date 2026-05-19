@@ -364,7 +364,13 @@ function Onboarding({username,onComplete}){
 
 // ── HOME ──────────────────────────────────────────────────────────────
 function Home({u,me,setU,logout}){
-  const [tab,setTab]=useState('today')
+  const [tab,setTab]=useState(()=>{
+    try{
+      const s=localStorage.getItem('ms_session')
+      if(s)return JSON.parse(s).tab||'today'
+    }catch{}
+    return 'today'
+  })
   const [ms,setMs]=useState(null)
   const [groups,setGroups]=useState([])
 
@@ -522,7 +528,7 @@ function Home({u,me,setU,logout}){
         {tab==='group'&&<Squad u={u} me={me} groups={groups} mkGroup={mkGroup} joinGroup={joinGrp} heart={heartPost} affirm={affirmPost} postFeed={postFeed} refreshGroups={refreshGroups}/>}
       </div>
       <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'480px',background:'white',borderTop:'1px solid rgba(180,140,165,0.18)',display:'flex',padding:'8px 0',zIndex:100}}>
-        {tabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);document.querySelector('#scroll-container')?.scrollTo({top:0,behavior:'smooth'})}} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'3px 0',background:'none',border:'none',cursor:'pointer',color:tab===t.id?c:c+'88',transition:'color 0.15s'}}>
+        {tabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);document.querySelector('#scroll-container')?.scrollTo({top:0,behavior:'smooth'});try{const s=localStorage.getItem('ms_session');if(s){const p=JSON.parse(s);localStorage.setItem('ms_session',JSON.stringify({...p,tab:t.id}))}}catch{}}} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'3px 0',background:'none',border:'none',cursor:'pointer',color:tab===t.id?c:c+'88',transition:'color 0.15s'}}>
           <i className={`ti ${t.icon}`} style={{fontSize:'22px'}}/>
           <span style={{fontSize:'11px',fontWeight:'900',letterSpacing:'0.2px'}}>{t.lbl}</span>
           <div style={{width:'4px',height:'4px',borderRadius:'50%',background:c,opacity:tab===t.id?1:0,transition:'opacity 0.15s'}}/>
@@ -1888,13 +1894,13 @@ function App(){
       if(user){
         if(!skipPin&&user.pin!==pin){setLoading(false);return false}
         setMe(name);setU(user)
-        localStorage.setItem('ms_session',JSON.stringify({name,pin:user.pin}))
+        localStorage.setItem('ms_session',JSON.stringify({name,pin:user.pin,user}))
         setScreen(user.onboarded?'home':'onboarding')
       }else{
         const newUser={name,pin,onboarded:false,day:1,total_days:75,color:'#B5365F',color_light:'#FDF0F5',tasks:{daily:[],weekly:[],general:[]},goals:[],media_rules:[],why:'',groups:[],checkins:{},weekly_done:{}}
         await api.createUser(newUser)
         setMe(name);setU(newUser)
-        localStorage.setItem('ms_session',JSON.stringify({name,pin}))
+        localStorage.setItem('ms_session',JSON.stringify({name,pin,user:newUser}))
         setScreen('onboarding')
       }
     }catch(e){
@@ -1906,18 +1912,35 @@ function App(){
     return true
   }
 
-  // Auto-login on app load - using ref to avoid stale closure
-  const loginRef = React.useRef(login)
-  loginRef.current = login
+  // Auto-login: restore immediately from cache, then refresh from Supabase in background
   useEffect(()=>{
     const session=localStorage.getItem('ms_session')
-    if(session){
-      try{
-        const {name,pin}=JSON.parse(session)
-        if(name&&pin)loginRef.current(name,pin,true)
-      }catch(e){
-        localStorage.removeItem('ms_session')
+    if(!session)return
+    try{
+      const {name,pin,user:cachedUser}=JSON.parse(session)
+      if(!name||!pin)return
+      // Restore immediately so user doesn't see login screen
+      if(cachedUser){
+        setMe(name)
+        setU(cachedUser)
+        setScreen(cachedUser.onboarded?'home':'onboarding')
       }
+      // Then refresh from Supabase in background to get latest data
+      api.getUser(name).then(freshUser=>{
+        if(freshUser&&freshUser.pin===pin){
+          setU(freshUser)
+          localStorage.setItem('ms_session',JSON.stringify({name,pin,user:freshUser}))
+        } else if(!freshUser) {
+          // User not found in DB, clear session
+          localStorage.removeItem('ms_session')
+          setScreen('auth')
+        }
+      }).catch(()=>{
+        // Network error - keep cached version, user stays logged in
+        console.log('Background refresh failed, using cached data')
+      })
+    }catch(e){
+      localStorage.removeItem('ms_session')
     }
   },[])
 
