@@ -1144,25 +1144,26 @@ function Nourish({u,me,save}){
   const GROCERY_SECTIONS=['produce','protein','dairy & eggs','grains & bread','pantry','snacks','beverages','other']
   const DAYS=['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
   const [recipe,setRecipe]=useState(null)
-  const [recipeLoading,setRecipeLoading]=useState(false)
+  const [pendingRecipe,setPendingRecipe]=useState(null)
+  const [servings,setServings]=useState(2)
 
-  const getRecipe=async(mealName)=>{
-    setRecipeLoading(true)
+  const getRecipe=async(mealName,servingCount)=>{
+    const count=servingCount||servings
     setRecipe({loading:true,name:mealName})
     try{
       const resp=await fetch('/api/mealplan',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({type:'recipe',meal:mealName,prefs:u.nourish_prefs||{},goals:''})
+        body:JSON.stringify({type:'recipe',meal:mealName,servings:count,prefs:u.nourish_prefs||{},goals:''})
       })
       const data=await resp.json()
       if(!resp.ok)throw new Error(data.error||'failed')
-      setRecipe({...data,mealName})
+      setRecipe({...data,mealName,servings:count})
     }catch(e){
       setRecipe(null)
+      setPendingRecipe(null)
       alert('Could not load recipe. Try again!')
     }
-    setRecipeLoading(false)
   }
 
   const savePrefs=async()=>{
@@ -1221,6 +1222,94 @@ function Nourish({u,me,save}){
     await save(updates)
     setProgressWeight('');setProgressNote('');setShowAddProgress(false)
   }
+
+  // SERVINGS PICKER - shows before generating recipe
+  if(pendingRecipe&&!recipe)return(
+    <div style={{padding:'14px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'20px'}}>
+        <button onClick={()=>setPendingRecipe(null)} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
+        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>get the recipe 👩‍🍳</h2>
+      </div>
+
+      <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'14px',padding:'14px 16px',marginBottom:'20px'}}>
+        <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'4px'}}>meal</div>
+        <div style={{fontSize:'15px',color:'#1A1220',lineHeight:1.4}}>{pendingRecipe}</div>
+      </div>
+
+      <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'20px',marginBottom:'24px',textAlign:'center'}}>
+        <div style={{fontSize:'13px',fontWeight:'700',color:'#1A1220',marginBottom:'16px'}}>how many people are you cooking for?</div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'20px'}}>
+          <button onClick={()=>setServings(s=>Math.max(1,s-1))} style={{width:'40px',height:'40px',borderRadius:'50%',background:l,color:c,fontSize:'22px',fontWeight:'900',border:`2px solid ${c}44`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:'48px',fontWeight:'900',color:c,lineHeight:1}}>{servings}</div>
+            <div style={{fontSize:'12px',color:'#A898B0',marginTop:'4px'}}>{servings===1?'person':'people'}</div>
+          </div>
+          <button onClick={()=>setServings(s=>Math.min(12,s+1))} style={{width:'40px',height:'40px',borderRadius:'50%',background:l,color:c,fontSize:'22px',fontWeight:'900',border:`2px solid ${c}44`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+        </div>
+        <div style={{display:'flex',gap:'8px',justifyContent:'center',marginTop:'16px',flexWrap:'wrap'}}>
+          {[1,2,4,6,8].map(n=>(
+            <button key={n} onClick={()=>setServings(n)} style={{padding:'6px 14px',borderRadius:'20px',fontSize:'13px',fontWeight:'700',border:`2px solid ${servings===n?c:'#E0D0D8'}`,background:servings===n?l:'white',color:servings===n?c:'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{n}</button>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={()=>getRecipe(pendingRecipe,servings)} style={{width:'100%',padding:'14px',borderRadius:'12px',background:c,color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer'}}>
+        get recipe for {servings} {servings===1?'person':'people'} ✨
+      </button>
+    </div>
+  )
+
+  // RECIPE MODAL - must be before view checks since recipe can be triggered from plan view
+  if(recipe)return(
+    <div style={{padding:'14px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'16px'}}>
+        <button onClick={()=>setRecipe(null)} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
+        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>recipe 👩‍🍳</h2>
+      </div>
+      {recipe.loading?(
+        <div style={{textAlign:'center',padding:'40px 20px'}}>
+          <div style={{fontSize:'32px',marginBottom:'12px'}}>👩‍🍳</div>
+          <div style={{fontSize:'14px',color:c,fontWeight:'700'}}>getting your recipe...</div>
+        </div>
+      ):(
+        <div>
+          <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'14px',padding:'14px 16px',marginBottom:'14px'}}>
+            <div style={{fontFamily:'Playfair Display,serif',fontSize:'20px',color:'#1A1220',marginBottom:'4px'}}>{recipe.name}</div>
+            <div style={{display:'flex',gap:'12px',fontSize:'12px',color:'#A898B0'}}>
+              <span>⏱️ {recipe.time}</span>
+              <span>🍽️ {recipe.serves}</span>
+            </div>
+          </div>
+          <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
+            <div style={{fontSize:'12px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px'}}>ingredients</div>
+            {(recipe.ingredients||[]).map((ing,i)=>(
+              <div key={i} style={{display:'flex',gap:'8px',marginBottom:'6px',alignItems:'flex-start'}}>
+                <span style={{color:c,fontWeight:'700',flexShrink:0}}>•</span>
+                <span style={{fontSize:'14px',color:'#1A1220',lineHeight:1.4}}>{ing}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
+            <div style={{fontSize:'12px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px'}}>steps</div>
+            {(recipe.steps||[]).map((step,i)=>(
+              <div key={i} style={{display:'flex',gap:'10px',marginBottom:'10px',alignItems:'flex-start'}}>
+                <div style={{width:'22px',height:'22px',borderRadius:'50%',background:c,color:'white',fontSize:'11px',fontWeight:'900',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:'1px'}}>{i+1}</div>
+                <span style={{fontSize:'14px',color:'#1A1220',lineHeight:1.6,flex:1}}>{step}</span>
+              </div>
+            ))}
+          </div>
+          {recipe.tip&&<div style={{background:'linear-gradient(135deg,#FFFBEF,#FFF2EF)',border:'1px solid #FFE08A',borderRadius:'12px',padding:'12px 14px',marginBottom:'14px'}}>
+            <div style={{fontSize:'11px',fontWeight:'700',color:'#9A5C00',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'4px'}}>💡 tip</div>
+            <div style={{fontSize:'13px',color:'#6B5870',lineHeight:1.6}}>{recipe.tip}</div>
+          </div>}
+          <div style={{display:'flex',gap:'8px'}}>
+            <button onClick={()=>{setRecipe(null);setPendingRecipe(null)}} style={{flex:1,padding:'12px',borderRadius:'12px',border:`2px solid ${c}`,color:c,fontWeight:'700',fontSize:'13px',background:'white',cursor:'pointer'}}>← meal plan</button>
+            <button onClick={()=>{setRecipe(null);}} style={{flex:1,padding:'12px',borderRadius:'12px',background:c,color:'white',fontWeight:'900',fontSize:'13px',border:'none',cursor:'pointer'}}>change servings</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 
   // HOME VIEW
   if(view==='home')return(
@@ -1388,7 +1477,7 @@ function Nourish({u,me,save}){
                   <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
                     <div style={{fontSize:'15px',width:'20px',flexShrink:0}}>{emoji}</div>
                     <div style={{flex:1}}><div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div><div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px',lineHeight:1.4}}>{text}</div></div>
-                    <button onClick={()=>getRecipe(text)} style={{background:'#FDF0F5',color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'3px 8px',fontSize:'10px',fontWeight:'700',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>recipe</button>
+                    <button onClick={()=>setPendingRecipe(text)} style={{background:'#FDF0F5',color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'3px 8px',fontSize:'10px',fontWeight:'700',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>recipe</button>
                   </div>
                 </div>
               ))}
@@ -1574,59 +1663,6 @@ function Nourish({u,me,save}){
           {entry.note&&<div style={{fontSize:'13px',color:'#6B5870',lineHeight:1.5}}>{entry.note}</div>}
         </div>
       ))}
-    </div>
-  )
-
-  // RECIPE MODAL
-  if(recipe)return(
-    <div style={{padding:'14px'}}>
-      <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'16px'}}>
-        <button onClick={()=>setRecipe(null)} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
-        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>recipe 👩‍🍳</h2>
-      </div>
-      {recipe.loading?(
-        <div style={{textAlign:'center',padding:'40px 20px'}}>
-          <div style={{fontSize:'32px',marginBottom:'12px'}}>👩‍🍳</div>
-          <div style={{fontSize:'14px',color:c,fontWeight:'700'}}>getting your recipe...</div>
-        </div>
-      ):(
-        <div>
-          <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'14px',padding:'14px 16px',marginBottom:'14px'}}>
-            <div style={{fontFamily:'Playfair Display,serif',fontSize:'20px',color:'#1A1220',marginBottom:'4px'}}>{recipe.name}</div>
-            <div style={{display:'flex',gap:'12px',fontSize:'12px',color:'#A898B0'}}>
-              <span>⏱️ {recipe.time}</span>
-              <span>🍽️ {recipe.serves}</span>
-            </div>
-          </div>
-
-          <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
-            <div style={{fontSize:'12px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px'}}>ingredients</div>
-            {(recipe.ingredients||[]).map((ing,i)=>(
-              <div key={i} style={{display:'flex',gap:'8px',marginBottom:'6px',alignItems:'flex-start'}}>
-                <span style={{color:c,fontWeight:'700',flexShrink:0}}>•</span>
-                <span style={{fontSize:'14px',color:'#1A1220',lineHeight:1.4}}>{ing}</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
-            <div style={{fontSize:'12px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px'}}>steps</div>
-            {(recipe.steps||[]).map((step,i)=>(
-              <div key={i} style={{display:'flex',gap:'10px',marginBottom:'10px',alignItems:'flex-start'}}>
-                <div style={{width:'22px',height:'22px',borderRadius:'50%',background:c,color:'white',fontSize:'11px',fontWeight:'900',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:'1px'}}>{i+1}</div>
-                <span style={{fontSize:'14px',color:'#1A1220',lineHeight:1.6,flex:1}}>{step}</span>
-              </div>
-            ))}
-          </div>
-
-          {recipe.tip&&<div style={{background:'linear-gradient(135deg,#FFFBEF,#FFF2EF)',border:'1px solid #FFE08A',borderRadius:'12px',padding:'12px 14px',marginBottom:'14px'}}>
-            <div style={{fontSize:'11px',fontWeight:'700',color:'#9A5C00',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'4px'}}>💡 tip</div>
-            <div style={{fontSize:'13px',color:'#6B5070',lineHeight:1.6}}>{recipe.tip}</div>
-          </div>}
-
-          <button onClick={()=>setRecipe(null)} style={{width:'100%',padding:'12px',borderRadius:'12px',background:c,color:'white',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>← back to meal plan</button>
-        </div>
-      )}
     </div>
   )
 
