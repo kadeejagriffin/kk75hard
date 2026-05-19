@@ -74,6 +74,10 @@ const api = {
     if (!r.ok) throw new Error(JSON.stringify(d))
     return Array.isArray(d) ? d[0] : data
   },
+  deleteGroup: async (code) => {
+    const r = await fetch(`${SB_URL}/groups?code=eq.${encodeURIComponent(code)}`, { method:'DELETE', headers:SB_H })
+    return r.ok
+  },
 }
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────
@@ -460,8 +464,18 @@ function Home({u,me,setU,logout}){
     await api.updateGroup(updated)
     const newGroups=[...new Set([...(u.groups||[]),code.toUpperCase()])]
     await save({groups:newGroups})
-    loadGroups()
+    setGroupRefreshKey(k=>k+1)
     return true
+  }
+
+  const deleteGrp=async(code)=>{
+    // Remove from user's groups list
+    const newGroups=(u.groups||[]).filter(c=>c!==code)
+    await save({groups:newGroups})
+    // If we created it, delete from Supabase entirely
+    const g=groups.find(x=>x.code===code)
+    if(g?.created_by===me)await api.deleteGroup(code)
+    setGroupRefreshKey(k=>k+1)
   }
 
   const postFeed=async(code,type,content)=>{
@@ -524,7 +538,7 @@ function Home({u,me,setU,logout}){
         {tab==='media'&&<Media u={u} save={save}/>}
         {tab==='tasks'&&<Tasks u={u} save={save}/>}
         {tab==='nourish'&&<Nourish u={u} me={me} save={save}/>}
-        {tab==='group'&&<Squad u={u} me={me} groups={groups} mkGroup={mkGroup} joinGroup={joinGrp} heart={heartPost} affirm={affirmPost} postFeed={postFeed} refreshGroups={refreshGroups}/>}
+        {tab==='group'&&<Squad u={u} me={me} groups={groups} mkGroup={mkGroup} joinGroup={joinGrp} deleteGroup={deleteGrp} heart={heartPost} affirm={affirmPost} postFeed={postFeed} refreshGroups={refreshGroups}/>}
       </div>
       <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'480px',background:'white',borderTop:'1px solid rgba(180,140,165,0.18)',display:'flex',padding:'8px 0',zIndex:100}}>
         {tabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);document.querySelector('#scroll-container')?.scrollTo({top:0,behavior:'smooth'});try{const s=localStorage.getItem('ms_session');if(s){const p=JSON.parse(s);localStorage.setItem('ms_session',JSON.stringify({...p,tab:t.id}))}}catch{}}} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'3px 0',background:'none',border:'none',cursor:'pointer',color:tab===t.id?c:c+'88',transition:'color 0.15s'}}>
@@ -998,7 +1012,7 @@ function TRow({t,onT,onU,onR,last,isDone,c='#B5365F'}){
 }
 
 // ── SQUAD ─────────────────────────────────────────────────────────────
-function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed,refreshGroups}){
+function Squad({u,me,groups,mkGroup,joinGroup,deleteGroup,heart,affirm,postFeed,refreshGroups}){
   const [view,setView]=useState('feed')
   const [gn,setGn]=useState('')
   const [jc,setJc]=useState('')
@@ -1086,18 +1100,35 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed,refreshGroup
 
   return(
     <div style={{padding:'14px'}}>
-      {groups.length>1&&<div style={{display:'flex',gap:'6px',marginBottom:'12px',overflowX:'auto',paddingBottom:'2px'}}>
-        {groups.map((g,i)=>(
-          <button key={g.code} onClick={()=>setActiveGroup(i)} style={{padding:'7px 14px',borderRadius:'20px',fontSize:'12px',fontWeight:'700',whiteSpace:'nowrap',border:`2px solid ${activeGroup===i?c:'rgba(180,140,165,0.3)'}`,background:activeGroup===i?l:'white',color:activeGroup===i?c:'#6B5870',cursor:'pointer',transition:'all 0.15s',flexShrink:0}}>
-            {g.name}
-            {g.feed?.filter(p=>p.user!==me).length>0&&<span style={{marginLeft:'5px',background:c,color:'white',borderRadius:'10px',padding:'1px 6px',fontSize:'10px'}}>{g.feed.filter(p=>p.user!==me).length}</span>}
-          </button>
-        ))}
+      {groups.length>1&&<div style={{marginBottom:'12px'}}>
+        <div style={{fontSize:'11px',color:'#A898B0',marginBottom:'6px'}}>your groups</div>
+        <div style={{display:'flex',gap:'6px',overflowX:'auto',paddingBottom:'2px'}}>
+          {groups.map((g,i)=>(
+            <button key={g.code} onClick={()=>setActiveGroup(i)} style={{padding:'8px 16px',borderRadius:'20px',fontSize:'13px',fontWeight:'700',whiteSpace:'nowrap',border:`2px solid ${activeGroup===i?c:'rgba(180,140,165,0.3)'}`,background:activeGroup===i?c:'white',color:activeGroup===i?'white':'#6B5870',cursor:'pointer',transition:'all 0.15s',flexShrink:0,boxShadow:activeGroup===i?`0 3px 10px ${c}44`:'none'}}>
+              {g.name}
+              {g.feed?.filter(p=>p.user!==me).length>0&&<span style={{marginLeft:'6px',background:activeGroup===i?'white':c,color:activeGroup===i?c:'white',borderRadius:'10px',padding:'1px 7px',fontSize:'11px',fontWeight:'900'}}>{g.feed.filter(p=>p.user!==me).length}</span>}
+            </button>
+          ))}
+        </div>
       </div>}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'11px'}}>
         <div>
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220'}}>squad 👯‍♀️</h2>
-          {ag&&<div style={{fontSize:'11px',color:'#A898B0'}}>{ag.name} · code: <strong style={{letterSpacing:'1px'}}>{ag.code}</strong></div>}
+          {ag&&<div style={{fontSize:'11px',color:'#A898B0'}}>
+            <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'4px'}}>
+              <span>code: <strong style={{letterSpacing:'1px',color:'#1A1220'}}>{ag.code}</strong></span>
+              <button onClick={()=>{if(window.confirm(`leave "${ag.name}"?`)){deleteGroup(ag.code)}}} style={{color:'#F4ADCA',background:'none',border:'none',cursor:'pointer',fontSize:'11px',fontWeight:'700'}}>leave group</button>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:'5px',flexWrap:'wrap'}}>
+              <span style={{fontSize:'10px',color:'#A898B0'}}>members:</span>
+              {(ag.members||[]).map(m=>(
+                <div key={m} style={{display:'flex',alignItems:'center',gap:'3px',background:m===me?l:'#F9F5F7',border:`1px solid ${m===me?c+'44':'rgba(180,140,165,0.2)'}`,borderRadius:'20px',padding:'2px 8px'}}>
+                  <div style={{width:'14px',height:'14px',borderRadius:'50%',background:m===me?c:'#A898B0',color:'white',fontSize:'8px',fontWeight:'900',display:'flex',alignItems:'center',justifyContent:'center'}}>{m[0].toUpperCase()}</div>
+                  <span style={{fontSize:'11px',fontWeight:'600',color:m===me?c:'#6B5870'}}>{m}{m===me?' (you)':''}</span>
+                </div>
+              ))}
+            </div>
+          </div>}
         </div>
         <div style={{display:'flex',gap:'6px'}}>
           {ag&&<button onClick={()=>{
@@ -1107,7 +1138,7 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed,refreshGroup
           }} style={{background:'linear-gradient(135deg,#B5365F,#FF6B4A)',color:'white',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
             <i className="ti ti-share" style={{fontSize:'13px'}}/> invite
           </button>}
-          <button onClick={doRefresh} style={{background:refreshing?l:'#F9F5F7',color:c,borderRadius:'10px',padding:'5px 10px',fontSize:'14px',fontWeight:'700',border:`1px solid ${c}44`,cursor:'pointer'}}>{refreshing?'...':'↻'}</button>
+          <button onClick={doRefresh} style={{background:refreshing?l:'#F9F5F7',color:c,borderRadius:'10px',padding:'5px 10px',fontSize:'14px',fontWeight:'700',border:`1px solid ${c}44`,cursor:'pointer'}}>{refreshing?'⏳':'↻'}</button>
           <button onClick={()=>setView(view==='join'?'feed':'join')} style={{background:'#EEF7FF',color:'#1870BB',borderRadius:'10px',padding:'5px 11px',fontSize:'11px',fontWeight:'700',border:'1px solid #A8D8FF',cursor:'pointer'}}>+ join</button>
         </div>
       </div>
