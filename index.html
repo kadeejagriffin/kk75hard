@@ -1121,14 +1121,7 @@ function Nourish({u,me,save}){
   const [cuisines,setCuisines]=useState(()=>u.nourish_prefs?.cuisines||[])
   const [customDietary,setCustomDietary]=useState('')
 
-  useEffect(()=>{
-    if(u.nourish_prefs){
-      setDietary(u.nourish_prefs.dietary||[])
-      setAllergies(u.nourish_prefs.allergies||'')
-      setGoals2(u.nourish_prefs.goal?Array.isArray(u.nourish_prefs.goal)?u.nourish_prefs.goal:[u.nourish_prefs.goal]:[])
-      setCuisines(u.nourish_prefs.cuisines||[])
-    }
-  },[JSON.stringify(u.nourish_prefs)])
+  // prefs initialized from useState lazy init above
 
   // Meal plan state
   const mealPlan=u.meal_plan||null
@@ -1303,9 +1296,18 @@ function Nourish({u,me,save}){
           })}
         </div>
         <div style={{display:'flex',gap:'7px'}}>
-          <input value={customDietary} onChange={e=>setCustomDietary(e.target.value)} placeholder="add other..." style={{flex:1,padding:'8px 11px',borderRadius:'9px',border:'1.5px solid rgba(180,140,165,0.35)',fontSize:'13px',outline:'none',fontFamily:'DM Sans,sans-serif'}}/>
+          <input value={customDietary} onChange={e=>setCustomDietary(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'&&customDietary.trim()){setDietary(p=>[...p,customDietary.trim()]);setCustomDietary('')}}}
+            placeholder="e.g. anti-inflammatory, low sodium..."
+            style={{flex:1,padding:'8px 11px',borderRadius:'9px',border:`1.5px solid ${customDietary?c:'rgba(180,140,165,0.35)'}`,fontSize:'13px',outline:'none',fontFamily:'DM Sans,sans-serif'}}/>
           <button onClick={()=>{if(customDietary.trim()){setDietary(p=>[...p,customDietary.trim()]);setCustomDietary('')}}} style={{padding:'0 12px',borderRadius:'9px',background:c,color:'white',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>add</button>
         </div>
+        {dietary.filter(d=>!['vegetarian','vegan','gluten-free','dairy-free','keto','paleo','halal','kosher','low-carb','high-protein'].includes(d)).map(d=>(
+          <div key={d} style={{display:'inline-flex',alignItems:'center',gap:'5px',margin:'4px 4px 0 0',padding:'4px 10px',borderRadius:'20px',background:l,border:`1px solid ${c}44`,fontSize:'12px',color:c,fontWeight:'600'}}>
+            {d}
+            <button onClick={()=>setDietary(p=>p.filter(x=>x!==d))} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'14px',lineHeight:1,padding:0}}>×</button>
+          </div>
+        ))}
       </div>
 
       <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
