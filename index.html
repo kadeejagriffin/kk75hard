@@ -1144,8 +1144,9 @@ function Nourish({u,me,save}){
   const DAYS=['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
 
   const savePrefs=async()=>{
-    await save({nourish_prefs:{dietary,allergies,goal,cuisines},nourish_setup:true})
-    setView('home')
+    const updatedPrefs={dietary,allergies,goal,cuisines}
+    await save({nourish_prefs:updatedPrefs,nourish_setup:true})
+    return updatedPrefs
   }
 
   const generateMealPlan=async()=>{
@@ -1303,8 +1304,8 @@ function Nourish({u,me,save}){
         </div>
       </div>
 
-      <button onClick={savePrefs} style={{width:'100%',padding:'13px',borderRadius:'12px',background:c,color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer',marginBottom:'8px'}}>save preferences ✓</button>
-      <button onClick={async()=>{await savePrefs();generateMealPlan()}} style={{width:'100%',padding:'13px',borderRadius:'12px',background:'linear-gradient(135deg,#1E6E44,#52CC8A)',color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer'}}>save & generate meal plan 🤖</button>
+      <button onClick={async()=>{await savePrefs();setView('home')}} style={{width:'100%',padding:'13px',borderRadius:'12px',background:c,color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer',marginBottom:'8px'}}>save preferences ✓</button>
+      <button onClick={async()=>{await savePrefs();setView('confirm')}} style={{width:'100%',padding:'13px',borderRadius:'12px',background:'linear-gradient(135deg,#1E6E44,#52CC8A)',color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer'}}>save & review before generating →</button>
     </div>
   )
 
@@ -1316,9 +1317,14 @@ function Nourish({u,me,save}){
           <button onClick={()=>setView('home')} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>this week's meals 🍽️</h2>
         </div>
-        <button onClick={generateMealPlan} disabled={loading} style={{background:c,color:'white',borderRadius:'10px',padding:'6px 12px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
-          {loading?'generating...':'🤖 regenerate'}
-        </button>
+        <div style={{display:'flex',gap:'6px'}}>
+          <button onClick={()=>setView('confirm')} disabled={loading} style={{background:c,color:'white',borderRadius:'10px',padding:'6px 12px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer'}}>
+            🤖 regenerate
+          </button>
+          <button onClick={async()=>{if(confirm('Delete this meal plan and grocery list?')){await save({meal_plan:null,grocery_list:[]})}}} style={{background:'#FDF0F5',color:'#B5365F',borderRadius:'10px',padding:'6px 10px',fontSize:'11px',fontWeight:'700',border:'1px solid #F4ADCA',cursor:'pointer'}}>
+            🗑️
+          </button>
+        </div>
       </div>
 
       {!mealPlan&&!loading&&<div style={{textAlign:'center',padding:'40px 20px'}}>
@@ -1326,7 +1332,7 @@ function Nourish({u,me,save}){
         <div style={{fontSize:'14px',fontWeight:'700',color:'#1A1220',marginBottom:'6px'}}>ready to generate your meal plan?</div>
         <div style={{fontSize:'12px',color:'#A898B0',marginBottom:'16px'}}>{u.nourish_setup?'your preferences are saved — generate when ready!':'set up your food preferences first so the AI can personalize your plan'}</div>
         {u.nourish_setup
-          ? <button onClick={generateMealPlan} style={{background:c,color:'white',borderRadius:'12px',padding:'12px 24px',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>generate my meal plan ✨</button>
+          ? <button onClick={()=>setView('confirm')} style={{background:c,color:'white',borderRadius:'12px',padding:'12px 24px',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>review & generate ✨</button>
           : <button onClick={()=>setView('setup')} style={{background:c,color:'white',borderRadius:'12px',padding:'12px 24px',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>set my preferences first →</button>
         }
       </div>}
@@ -1356,6 +1362,54 @@ function Nourish({u,me,save}){
         ))}
         <button onClick={()=>setView('grocery')} style={{width:'100%',padding:'12px',borderRadius:'12px',background:'linear-gradient(135deg,#1E6E44,#52CC8A)',color:'white',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer',marginTop:'4px'}}>view grocery list 🛒</button>
       </div>}
+    </div>
+  )
+
+  // CONFIRM VIEW
+  if(view==='confirm')return(
+    <div style={{padding:'14px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'16px'}}>
+        <button onClick={()=>setView(u.nourish_setup?'plan':'setup')} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
+        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>confirm & generate 🤖</h2>
+      </div>
+
+      <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
+        <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220',marginBottom:'10px'}}>here's what i know about you:</div>
+
+        <div style={{marginBottom:'10px'}}>
+          <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:'4px'}}>dietary preferences</div>
+          <div style={{fontSize:'14px',color:'#1A1220'}}>{dietary.length?dietary.join(', '):'none specified'}</div>
+        </div>
+
+        <div style={{marginBottom:'10px'}}>
+          <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:'4px'}}>allergies / avoid</div>
+          <div style={{fontSize:'14px',color:'#1A1220'}}>{allergies||'none'}</div>
+        </div>
+
+        <div style={{marginBottom:'10px'}}>
+          <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:'4px'}}>nutrition goal</div>
+          <div style={{fontSize:'14px',color:'#1A1220'}}>{goal||'not set'}</div>
+        </div>
+
+        <div style={{marginBottom:'10px'}}>
+          <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:'4px'}}>cuisine preferences</div>
+          <div style={{fontSize:'14px',color:'#1A1220'}}>{cuisines.length?cuisines.join(', '):'open to anything'}</div>
+        </div>
+
+        <div>
+          <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'0.8px',marginBottom:'4px'}}>wellness goals</div>
+          <div style={{fontSize:'14px',color:'#1A1220'}}>{u.goals?.map(g=>g.title).join(', ')||'not set'}</div>
+        </div>
+      </div>
+
+      <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'12px',padding:'12px 14px',marginBottom:'14px'}}>
+        <div style={{fontSize:'12px',color:c,fontWeight:'600',lineHeight:1.6}}>✨ the AI will use all of this to create a personalized 7-day meal plan with a grocery list!</div>
+      </div>
+
+      <button onClick={()=>setView('setup')} style={{width:'100%',padding:'12px',borderRadius:'12px',border:`2px solid ${c}`,color:c,fontWeight:'700',fontSize:'14px',background:'white',cursor:'pointer',marginBottom:'8px'}}>edit preferences</button>
+      <button onClick={()=>{generateMealPlan();setView('plan')}} disabled={loading} style={{width:'100%',padding:'13px',borderRadius:'12px',background:'linear-gradient(135deg,#1E6E44,#52CC8A)',color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
+        {loading?<><Spinner color="white"/>generating your plan...</>:'generate my meal plan 🤖'}
+      </button>
     </div>
   )
 
