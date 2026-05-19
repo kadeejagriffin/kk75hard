@@ -10,18 +10,21 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'method not allowed' }) }
 
   try {
-    const { prefs, goals, type, meal } = JSON.parse(event.body)
+    const body = JSON.parse(event.body)
+    const { prefs, goals, type, meal } = body
+    const servings = body.servings || 2
 
     // Recipe request
     if (type === 'recipe') {
-      const recipePrompt = `Give me a simple, clear recipe for: "${meal}"
+      const servingCount = servings
+      const recipePrompt = `Give me a simple, clear recipe for: "${meal}" scaled for ${servingCount} ${servingCount === 1 ? 'person' : 'people'}.
 
 Format as JSON only:
 {
   "name": "meal name",
   "time": "total time",
-  "serves": "servings",
-  "ingredients": ["ingredient 1 with amount", "ingredient 2"],
+  "serves": "${servingCount} ${servingCount === 1 ? 'person' : 'people'}",
+  "ingredients": ["ingredient 1 with exact amount for ${servingCount} servings", "ingredient 2 with amount"],
   "steps": ["step 1", "step 2", "step 3"],
   "tip": "one helpful cooking tip"
 }`
