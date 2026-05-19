@@ -373,6 +373,7 @@ function Home({u,me,setU,logout}){
   })
   const [ms,setMs]=useState(null)
   const [groups,setGroups]=useState([])
+  const [groupRefreshKey,setGroupRefreshKey]=useState(0)
 
   useEffect(()=>{
     if(!u?.day)return
@@ -415,15 +416,13 @@ function Home({u,me,setU,logout}){
 
   const loadGroups=useCallback(async()=>{
     if(!u?.groups?.length)return
-    // Always fetch fresh from Supabase to get latest posts from all members
     const gs=await Promise.all(u.groups.map(code=>api.getGroup(code).catch(()=>null)))
     setGroups(gs.filter(Boolean))
-  },[u?.groups?.length])
+  },[u?.groups?.length, groupRefreshKey])
 
-  useEffect(()=>{loadGroups()},[u?.groups?.length])
+  useEffect(()=>{loadGroups()},[loadGroups])
 
-  // Also expose refreshGroups for Squad tab
-  const refreshGroups=loadGroups
+  const refreshGroups=()=>setGroupRefreshKey(k=>k+1)
 
   const save=async(updates)=>{
     const updated={...u,...updates}
@@ -1014,10 +1013,13 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed,refreshGroup
   const [activeGroup,setActiveGroup]=useState(0)
   const c=u.color||'#B5365F'
   const l=u.color_light||'#FDF0F5'
-  const ag=groups[activeGroup]||groups[0]
+  const ag=groups[activeGroup>=groups.length?0:activeGroup]||groups[0]
 
   useEffect(()=>{
     if(refreshGroups)refreshGroups()
+    // Auto-refresh every 30 seconds while on squad tab
+    const interval=setInterval(()=>{if(refreshGroups)refreshGroups()},30000)
+    return ()=>clearInterval(interval)
   },[])
 
   const doRefresh=async()=>{
@@ -1034,7 +1036,23 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed,refreshGroup
   }
   const ago=ts=>{const m=Math.floor((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+'m ago';const h=Math.floor(m/60);if(h<24)return h+'h ago';return Math.floor(h/24)+'d ago'}
   const doCreate=async()=>{if(!gn.trim())return;setLoading(true);const code=await mkGroup(gn.trim());setMsg(`created! share code: ${code} 🎉`);setGn('');setView('feed');setLoading(false)}
-  const doJoin=async()=>{setLoading(true);const ok=await joinGroup(jc.trim().toUpperCase());if(ok){setMsg('joined! 🌸');setJc('');setView('feed');}else setMsg('code not found — check it again!');setLoading(false)}
+  const doJoin=async()=>{
+    setLoading(true)
+    const ok=await joinGroup(jc.trim().toUpperCase())
+    if(ok){
+      await doRefresh()
+      const joined=groups.find(g=>g.code===jc.trim().toUpperCase())
+      setMsg(`you joined ${joined?.name||'the group'}! 🎉 welcome to the squad 🌸`)
+      setJc('')
+      setView('feed')
+      // Switch to the newly joined group
+      const newIdx=groups.findIndex(g=>g.code===jc.trim().toUpperCase())
+      if(newIdx>=0)setActiveGroup(newIdx)
+    }else{
+      setMsg('code not found — double check it!')
+    }
+    setLoading(false)
+  }
   const doWin=async()=>{if(!win.trim()||!ag)return;await postFeed(ag.code,'win',{text:win.trim()});setWin('');setSharing(false)}
 
   if(groups.length===0)return(
@@ -1068,6 +1086,14 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed,refreshGroup
 
   return(
     <div style={{padding:'14px'}}>
+      {groups.length>1&&<div style={{display:'flex',gap:'6px',marginBottom:'12px',overflowX:'auto',paddingBottom:'2px'}}>
+        {groups.map((g,i)=>(
+          <button key={g.code} onClick={()=>setActiveGroup(i)} style={{padding:'7px 14px',borderRadius:'20px',fontSize:'12px',fontWeight:'700',whiteSpace:'nowrap',border:`2px solid ${activeGroup===i?c:'rgba(180,140,165,0.3)'}`,background:activeGroup===i?l:'white',color:activeGroup===i?c:'#6B5870',cursor:'pointer',transition:'all 0.15s',flexShrink:0}}>
+            {g.name}
+            {g.feed?.filter(p=>p.user!==me).length>0&&<span style={{marginLeft:'5px',background:c,color:'white',borderRadius:'10px',padding:'1px 6px',fontSize:'10px'}}>{g.feed.filter(p=>p.user!==me).length}</span>}
+          </button>
+        ))}
+      </div>}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'11px'}}>
         <div>
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220'}}>squad 👯‍♀️</h2>
