@@ -11,27 +11,25 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body)
-    const { prefs, goals, type, meal } = body
-    const servings = body.servings || 2
+    const { prefs, goals, type, meal, servings } = body
 
     // Recipe request
     if (type === 'recipe') {
-      const servingCount = servings
-      const recipePrompt = `Give me a simple, clear recipe for: "${meal}" scaled for ${servingCount} ${servingCount === 1 ? 'person' : 'people'}.
-
+      const count = servings || 2
+      const prompt = `Give me a simple recipe for: "${meal}" scaled for ${count} ${count===1?'person':'people'}.
 Format as JSON only:
 {
   "name": "meal name",
   "time": "total time",
-  "serves": "${servingCount} ${servingCount === 1 ? 'person' : 'people'}",
-  "ingredients": ["ingredient 1 with exact amount for ${servingCount} servings", "ingredient 2 with amount"],
-  "steps": ["step 1", "step 2", "step 3"],
-  "tip": "one helpful cooking tip"
+  "serves": "${count} ${count===1?'person':'people'}",
+  "ingredients": ["ingredient with exact amount"],
+  "steps": ["step 1", "step 2"],
+  "tip": "one helpful tip"
 }`
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, messages: [{ role: 'user', content: recipePrompt }] })
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
       })
       const data = await resp.json()
       if (!resp.ok) throw new Error(data.error?.message || 'API error')
@@ -39,19 +37,36 @@ Format as JSON only:
       return { statusCode: 200, headers, body: JSON.stringify(parsed) }
     }
 
-    // Meal plan request
-    const nutritionGoals = Array.isArray(prefs.goal) ? prefs.goal.join(', ') : (prefs.goal || 'eat healthier')
-    const prompt = `You are a friendly nutritionist helping someone on a 75-day wellness challenge called "Magical Sunshine".
+    // Swap single meal request
+    if (type === 'swap') {
+      const { day, current } = body
+      const nutritionGoals = Array.isArray(prefs?.goal) ? prefs.goal.join(', ') : (prefs?.goal || 'eat healthier')
+      const prompt = `Suggest ONE alternative ${meal} for ${day} to replace: "${current}"
+The person's preferences: ${nutritionGoals}, dietary: ${prefs?.dietary?.join(', ')||'none'}, avoid: ${prefs?.allergies||'none'}
+Make it different from the current meal but equally delicious and nutritious.
+Respond with JSON only: {"meal": "meal name and brief description"}`
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content: prompt }] })
+      })
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.error?.message || 'API error')
+      const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}')
+      return { statusCode: 200, headers, body: JSON.stringify(parsed) }
+    }
 
-User's details:
+    // Full meal plan request
+    const nutritionGoals = Array.isArray(prefs?.goal) ? prefs.goal.join(', ') : (prefs?.goal || 'eat healthier')
+    const prompt = `You are a nutritionist helping someone on a 75-day wellness challenge called "Magical Sunshine".
+User details:
 - Wellness goals: ${goals || 'general wellness'}
 - Nutrition goals: ${nutritionGoals}
-- Dietary preferences: ${prefs.dietary?.length ? prefs.dietary.join(', ') : 'none'}
-- Allergies/restrictions: ${prefs.allergies || 'none'}
-- Cuisine preferences: ${prefs.cuisines?.length ? prefs.cuisines.join(', ') : 'open to anything'}
+- Dietary: ${prefs?.dietary?.length ? prefs.dietary.join(', ') : 'none'}
+- Allergies: ${prefs?.allergies || 'none'}
+- Cuisines: ${prefs?.cuisines?.length ? prefs.cuisines.join(', ') : 'open to anything'}
 
-Generate a 7-day meal plan with breakfast, lunch, dinner, and snack per day. Make meals delicious, realistic, and aligned with their goals. Also generate a grocery list by category.
-
+Generate a 7-day meal plan with breakfast, lunch, dinner, snack per day. Also generate a grocery list by category.
 Respond ONLY with valid JSON:
 {
   "days": {
@@ -64,15 +79,14 @@ Respond ONLY with valid JSON:
     "sunday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."}
   },
   "grocery": {
-    "produce": ["item1","item2"],
-    "protein": ["item1","item2"],
-    "dairy & eggs": ["item1","item2"],
-    "grains & bread": ["item1","item2"],
-    "pantry": ["item1","item2"],
-    "snacks": ["item1","item2"]
+    "produce": ["item1"],
+    "protein": ["item1"],
+    "dairy & eggs": ["item1"],
+    "grains & bread": ["item1"],
+    "pantry": ["item1"],
+    "snacks": ["item1"]
   }
 }`
-
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
