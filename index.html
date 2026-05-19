@@ -198,7 +198,7 @@ function Onboarding({username,onComplete}){
       currentDay = Math.max(1, diff + 1)
     }
     await onComplete({
-      color:col.c,color_light:col.l,total_days:days,why,start_date:startDate||new Date().toDateString(),current_day:currentDay,
+      color:col.c,color_light:col.l,total_days:days,why,start_date:startDate||new Date().toDateString(),_currentDay:currentDay,
       tasks:{daily:habits.map(h=>({id:h.id,text:h.text,category:h.cat})),weekly:[{id:'w1',text:'check in on my goals',category:'growth'},{id:'w2',text:'plan next week',category:'growth'}],general:[]},
       goals:goals.map((g,i)=>({id:'g'+i,title:g,desc:'',status:''})),
       media_rules:wMedia?media:[],
@@ -352,8 +352,9 @@ function Onboarding({username,onComplete}){
           <div style={{display:'flex',gap:'10px'}}>
             <button onClick={()=>setStep(6)} style={{flex:1,padding:'11px',borderRadius:'12px',border:`2px solid ${c.c}`,color:c.c,fontWeight:'700',background:'white',cursor:'pointer'}}>back</button>
             <button onClick={finish} disabled={saving} style={{flex:2,padding:'11px',borderRadius:'12px',background:c.c,color:'white',fontWeight:'900',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
-              {saving?<><Spinner color="white"/> saving...</>:"i'm ready! 🔥"}
+              {saving?<><Spinner color="white"/> saving your profile...</>:"i'm ready! 🔥"}
             </button>
+            {saving&&<div style={{fontSize:'12px',color:'#A898B0',textAlign:'center',marginTop:'8px'}}>this may take a few seconds...</div>}
           </div>
         </div>}
       </div>
@@ -1686,10 +1687,37 @@ function App(){
   }
 
   const complete=async(profile)=>{
-    const updated={...u,...profile,onboarded:true,day:profile.current_day||1}
-    await api.updateUser(updated)
-    setU(updated)
-    setScreen('home')
+    setLoading(true)
+    try{
+      // Build a clean user object with only known safe fields
+      const updated={
+        name:u.name,
+        pin:u.pin,
+        onboarded:true,
+        day:profile._currentDay||1,
+        total_days:profile.total_days||75,
+        color:profile.color||'#B5365F',
+        color_light:profile.color_light||'#FDF0F5',
+        why:profile.why||'',
+        start_date:profile.start_date||new Date().toDateString(),
+        tasks:profile.tasks||{daily:[],weekly:[],general:[]},
+        goals:profile.goals||[],
+        media_rules:profile.media_rules||[],
+        media_challenge_name:profile.media_challenge_name||'no-media challenge',
+        groups:[],
+        checkins:{},
+        weekly_done:{},
+        wins:[],
+        last_checkin:null,
+      }
+      await api.updateUser(updated)
+      setU(updated)
+      setScreen('home')
+    }catch(e){
+      console.error('onboarding save error:',e)
+      alert('Something went wrong saving your profile: '+e.message+'. Please try again!')
+    }
+    setLoading(false)
   }
 
   if(loading)return(
