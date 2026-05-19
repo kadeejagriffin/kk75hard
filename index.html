@@ -490,7 +490,7 @@ function Home({u,me,setU,logout}){
 
   if(!u)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><Spinner/></div>
   const c=u.color||'#B5365F'
-  const tabs=[{id:'today',icon:'ti-sun',lbl:'today'},{id:'goals',icon:'ti-target',lbl:'goals'},{id:'media',icon:'ti-device-mobile-off',lbl:'media'},{id:'tasks',icon:'ti-list-check',lbl:'tasks'},{id:'group',icon:'ti-users',lbl:'squad'}]
+  const tabs=[{id:'today',icon:'ti-sun',lbl:'today'},{id:'goals',icon:'ti-target',lbl:'goals'},{id:'media',icon:'ti-device-mobile-off',lbl:'media'},{id:'tasks',icon:'ti-list-check',lbl:'tasks'},{id:'nourish',icon:'ti-salad',lbl:'nourish'},{id:'group',icon:'ti-users',lbl:'squad'}]
 
   return(
     <div style={{display:'flex',flexDirection:'column',minHeight:'100vh',maxWidth:'480px',margin:'0 auto',background:'#fff'}}>
@@ -514,6 +514,7 @@ function Home({u,me,setU,logout}){
         {tab==='goals'&&<Goals u={u} save={save}/>}
         {tab==='media'&&<Media u={u} save={save}/>}
         {tab==='tasks'&&<Tasks u={u} save={save}/>}
+        {tab==='nourish'&&<Nourish u={u} me={me} save={save}/>}
         {tab==='group'&&<Squad u={u} me={me} groups={groups} mkGroup={mkGroup} joinGroup={joinGrp} heart={heartPost} affirm={affirmPost} postFeed={postFeed}/>}
       </div>
       <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:'480px',background:'white',borderTop:'1px solid rgba(180,140,165,0.18)',display:'flex',padding:'8px 0',zIndex:100}}>
@@ -1102,6 +1103,388 @@ function Squad({u,me,groups,mkGroup,joinGroup,heart,affirm,postFeed}){
       {msg&&<div style={{marginTop:'10px',padding:'10px',background:'#EDFBF3',borderRadius:'10px',color:'#1E6E44',fontSize:'13px',fontWeight:'600',textAlign:'center',border:'1px solid #A8ECC8'}}>{msg}</div>}
     </div>
   )
+}
+
+// ── NOURISH TAB ──────────────────────────────────────────────────────
+function Nourish({u,me,save}){
+  const c=u.color||'#B5365F'
+  const l=u.color_light||'#FDF0F5'
+  const [view,setView]=useState('home') // home | setup | plan | progress
+  const [loading,setLoading]=useState(false)
+  const [setupStep,setSetupStep]=useState(1)
+
+  // Preferences state
+  const prefs=u.nourish_prefs||{}
+  const [dietary,setDietary]=useState(prefs.dietary||[])
+  const [allergies,setAllergies]=useState(prefs.allergies||'')
+  const [goal,setGoal]=useState(prefs.goal||'')
+  const [cuisines,setCuisines]=useState(prefs.cuisines||[])
+  const [customDietary,setCustomDietary]=useState('')
+
+  // Meal plan state
+  const mealPlan=u.meal_plan||null
+  const grocery=u.grocery_list||[]
+  const [editGrocery,setEditGrocery]=useState(false)
+  const [newItem,setNewItem]=useState('')
+  const [newSection,setNewSection]=useState('produce')
+
+  // Progress state
+  const progress=u.progress_log||[]
+  const [showAddProgress,setShowAddProgress]=useState(false)
+  const [progressNote,setProgressNote]=useState('')
+  const [progressWeight,setProgressWeight]=useState('')
+  const [progressUnit,setProgressUnit]=useState(u.weight_unit||'lbs')
+  const startWeight=u.start_weight||null
+
+  const DIETARY_OPTS=['vegetarian','vegan','gluten-free','dairy-free','keto','paleo','halal','kosher','low-carb','high-protein']
+  const CUISINE_OPTS=['american','mediterranean','asian','mexican','italian','indian','middle eastern','soul food','caribbean']
+  const GOAL_OPTS=['lose weight','build muscle','eat healthier','more energy','better digestion','balanced nutrition','meal prep master']
+  const GROCERY_SECTIONS=['produce','protein','dairy & eggs','grains & bread','pantry','snacks','beverages','other']
+  const DAYS=['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+
+  const savePrefs=async()=>{
+    await save({nourish_prefs:{dietary,allergies,goal,cuisines},nourish_setup:true})
+    setView('home')
+  }
+
+  const generateMealPlan=async()=>{
+    setLoading(true)
+    try{
+      const resp=await fetch('/api/mealplan',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({prefs:u.nourish_prefs||{},goals:u.goals?.map(g=>g.title).join(', ')||''})
+      })
+      const parsed=await resp.json()
+      if(!resp.ok)throw new Error(parsed.error||'generation failed')
+      
+      // Convert grocery to list format with checked state
+      const groceryList=[]
+      Object.entries(parsed.grocery||{}).forEach(([section,items])=>{
+        items.forEach(item=>groceryList.push({id:Date.now()+Math.random(),text:item,section,checked:false}))
+      })
+      
+      await save({meal_plan:{...parsed.days,generated:new Date().toLocaleDateString()},grocery_list:groceryList})
+      setView('plan')
+    }catch(e){
+      console.error(e)
+      alert('Something went wrong generating your meal plan. Try again!')
+    }
+    setLoading(false)
+  }
+
+  const toggleGrocery=async(id)=>{
+    const updated=(u.grocery_list||[]).map(i=>i.id===id?{...i,checked:!i.checked}:i)
+    await save({grocery_list:updated})
+  }
+
+  const addGroceryItem=async()=>{
+    if(!newItem.trim())return
+    const updated=[...(u.grocery_list||[]),{id:Date.now(),text:newItem.trim(),section:newSection,checked:false}]
+    await save({grocery_list:updated})
+    setNewItem('')
+  }
+
+  const removeGroceryItem=async(id)=>{
+    await save({grocery_list:(u.grocery_list||[]).filter(i=>i.id!==id)})
+  }
+
+  const addProgress=async()=>{
+    const entry={id:Date.now(),date:new Date().toLocaleDateString(),weight:progressWeight?parseFloat(progressWeight):null,unit:progressUnit,note:progressNote,day:u.day||1}
+    const updated=[...(u.progress_log||[]),entry]
+    const updates={progress_log:updated,weight_unit:progressUnit}
+    if(!u.start_weight&&progressWeight)updates.start_weight=parseFloat(progressWeight)
+    await save(updates)
+    setProgressWeight('');setProgressNote('');setShowAddProgress(false)
+  }
+
+  // HOME VIEW
+  if(view==='home')return(
+    <div style={{padding:'14px'}}>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'24px',color:'#1A1220',marginBottom:'3px'}}>nourish 🥗</h2>
+      <p style={{fontSize:'13px',color:'#A898B0',marginBottom:'16px'}}>meal planning, grocery lists & progress</p>
+
+      {/* Quick actions */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'14px'}}>
+        <div onClick={()=>setView('plan')} style={{background:`linear-gradient(135deg,${c},#FF6B4A)`,borderRadius:'16px',padding:'16px',cursor:'pointer',color:'white'}}>
+          <div style={{fontSize:'22px',marginBottom:'6px'}}>🍽️</div>
+          <div style={{fontSize:'13px',fontWeight:'700'}}>meal plan</div>
+          <div style={{fontSize:'10px',opacity:0.85,marginTop:'2px'}}>{mealPlan?`generated ${mealPlan.generated}`:'not set up yet'}</div>
+        </div>
+        <div onClick={()=>setView('grocery')} style={{background:'linear-gradient(135deg,#1E6E44,#52CC8A)',borderRadius:'16px',padding:'16px',cursor:'pointer',color:'white'}}>
+          <div style={{fontSize:'22px',marginBottom:'6px'}}>🛒</div>
+          <div style={{fontSize:'13px',fontWeight:'700'}}>grocery list</div>
+          <div style={{fontSize:'10px',opacity:0.85,marginTop:'2px'}}>{grocery.length} items · {grocery.filter(i=>i.checked).length} checked</div>
+        </div>
+        <div onClick={()=>setView('progress')} style={{background:'linear-gradient(135deg,#6B44CC,#9B72FF)',borderRadius:'16px',padding:'16px',cursor:'pointer',color:'white'}}>
+          <div style={{fontSize:'22px',marginBottom:'6px'}}>📈</div>
+          <div style={{fontSize:'13px',fontWeight:'700'}}>my progress</div>
+          <div style={{fontSize:'10px',opacity:0.85,marginTop:'2px'}}>{progress.length} check-ins logged</div>
+        </div>
+        <div onClick={()=>setView('setup')} style={{background:'linear-gradient(135deg,#9A5C00,#FFB830)',borderRadius:'16px',padding:'16px',cursor:'pointer',color:'white'}}>
+          <div style={{fontSize:'22px',marginBottom:'6px'}}>⚙️</div>
+          <div style={{fontSize:'13px',fontWeight:'700'}}>preferences</div>
+          <div style={{fontSize:'10px',opacity:0.85,marginTop:'2px'}}>{dietary.length?dietary.join(', '):'set dietary needs'}</div>
+        </div>
+      </div>
+
+      {/* Today's meals preview */}
+      {mealPlan&&(()=>{
+        const todayName=DAYS[new Date().getDay()===0?6:new Date().getDay()-1]
+        const todayMeals=mealPlan[todayName]
+        if(!todayMeals)return null
+        return(
+          <div style={{background:'white',borderRadius:'16px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'14px'}}>
+            <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px'}}>today's meals — {todayName}</div>
+            {[['🌅','breakfast',todayMeals.breakfast],['☀️','lunch',todayMeals.lunch],['🌙','dinner',todayMeals.dinner],['🍎','snack',todayMeals.snack]].map(([emoji,meal,text])=>(
+              <div key={meal} style={{display:'flex',gap:'10px',marginBottom:'8px',alignItems:'flex-start'}}>
+                <div style={{fontSize:'16px',width:'22px',flexShrink:0}}>{emoji}</div>
+                <div><div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div><div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px'}}>{text}</div></div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
+      {!mealPlan&&<div style={{background:l,border:`1px solid ${c}44`,borderRadius:'14px',padding:'16px',textAlign:'center'}}>
+        <div style={{fontSize:'28px',marginBottom:'8px'}}>🍽️</div>
+        <div style={{fontSize:'14px',fontWeight:'700',color:c,marginBottom:'4px'}}>no meal plan yet</div>
+        <div style={{fontSize:'12px',color:'#A898B0',marginBottom:'12px'}}>set up your preferences and let AI generate a personalized weekly plan!</div>
+        <button onClick={()=>setView('setup')} style={{background:c,color:'white',borderRadius:'12px',padding:'10px 22px',fontWeight:'900',fontSize:'13px',border:'none',cursor:'pointer'}}>get started ✨</button>
+      </div>}
+    </div>
+  )
+
+  // SETUP VIEW
+  if(view==='setup')return(
+    <div style={{padding:'14px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'16px'}}>
+        <button onClick={()=>setView('home')} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
+        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>your food preferences 🍽️</h2>
+      </div>
+
+      <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
+        <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220',marginBottom:'8px'}}>dietary preferences</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'8px'}}>
+          {DIETARY_OPTS.map(d=>{
+            const sel=dietary.includes(d)
+            return<button key={d} onClick={()=>setDietary(p=>sel?p.filter(x=>x!==d):[...p,d])} style={{padding:'6px 12px',borderRadius:'20px',fontSize:'12px',fontWeight:'700',border:`2px solid ${sel?c:'#E0D0D8'}`,background:sel?l:'white',color:sel?c:'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{sel?'✓ ':''}{d}</button>
+          })}
+        </div>
+        <div style={{display:'flex',gap:'7px'}}>
+          <input value={customDietary} onChange={e=>setCustomDietary(e.target.value)} placeholder="add other..." style={{flex:1,padding:'8px 11px',borderRadius:'9px',border:'1.5px solid rgba(180,140,165,0.35)',fontSize:'13px',outline:'none',fontFamily:'DM Sans,sans-serif'}}/>
+          <button onClick={()=>{if(customDietary.trim()){setDietary(p=>[...p,customDietary.trim()]);setCustomDietary('')}}} style={{padding:'0 12px',borderRadius:'9px',background:c,color:'white',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>add</button>
+        </div>
+      </div>
+
+      <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
+        <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220',marginBottom:'6px'}}>allergies or foods to avoid</div>
+        <textarea value={allergies} onChange={e=>setAllergies(e.target.value)} placeholder="e.g. peanuts, shellfish, gluten..." rows={2} style={{width:'100%',padding:'9px 11px',borderRadius:'9px',border:'1.5px solid rgba(180,140,165,0.35)',fontSize:'13px',resize:'none',outline:'none',fontFamily:'DM Sans,sans-serif'}}/>
+      </div>
+
+      <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'12px'}}>
+        <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220',marginBottom:'8px'}}>nutrition goal</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+          {GOAL_OPTS.map(g=>{
+            const sel=goal===g
+            return<button key={g} onClick={()=>setGoal(g)} style={{padding:'6px 12px',borderRadius:'20px',fontSize:'12px',fontWeight:'700',border:`2px solid ${sel?c:'#E0D0D8'}`,background:sel?l:'white',color:sel?c:'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{sel?'✓ ':''}{g}</button>
+          })}
+        </div>
+      </div>
+
+      <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'16px'}}>
+        <div style={{fontSize:'12px',fontWeight:'700',color:'#1A1220',marginBottom:'8px'}}>cuisine preferences</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+          {CUISINE_OPTS.map(g=>{
+            const sel=cuisines.includes(g)
+            return<button key={g} onClick={()=>setCuisines(p=>sel?p.filter(x=>x!==g):[...p,g])} style={{padding:'6px 12px',borderRadius:'20px',fontSize:'12px',fontWeight:'700',border:`2px solid ${sel?c:'#E0D0D8'}`,background:sel?l:'white',color:sel?c:'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{sel?'✓ ':''}{g}</button>
+          })}
+        </div>
+      </div>
+
+      <button onClick={savePrefs} style={{width:'100%',padding:'13px',borderRadius:'12px',background:c,color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer',marginBottom:'8px'}}>save preferences ✓</button>
+      {u.nourish_setup&&<button onClick={()=>{savePrefs();setTimeout(()=>generateMealPlan(),500)}} style={{width:'100%',padding:'13px',borderRadius:'12px',background:'linear-gradient(135deg,#1E6E44,#52CC8A)',color:'white',fontWeight:'900',fontSize:'15px',border:'none',cursor:'pointer'}}>save & generate new meal plan 🤖</button>}
+    </div>
+  )
+
+  // MEAL PLAN VIEW
+  if(view==='plan')return(
+    <div style={{padding:'14px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <button onClick={()=>setView('home')} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>this week's meals 🍽️</h2>
+        </div>
+        <button onClick={generateMealPlan} disabled={loading} style={{background:c,color:'white',borderRadius:'10px',padding:'6px 12px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
+          {loading?'generating...':'🤖 regenerate'}
+        </button>
+      </div>
+
+      {!mealPlan&&!loading&&<div style={{textAlign:'center',padding:'40px 20px'}}>
+        <div style={{fontSize:'32px',marginBottom:'12px'}}>🤖</div>
+        <div style={{fontSize:'14px',fontWeight:'700',color:'#1A1220',marginBottom:'6px'}}>ready to generate your meal plan?</div>
+        <div style={{fontSize:'12px',color:'#A898B0',marginBottom:'16px'}}>AI will create a personalized weekly plan based on your preferences</div>
+        <button onClick={generateMealPlan} style={{background:c,color:'white',borderRadius:'12px',padding:'12px 24px',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer'}}>generate my meal plan ✨</button>
+      </div>}
+
+      {loading&&<div style={{textAlign:'center',padding:'40px 20px'}}>
+        <div style={{fontSize:'32px',marginBottom:'12px'}}>🤖</div>
+        <div style={{fontSize:'14px',color:c,fontWeight:'700',marginBottom:'6px'}}>generating your personalized meal plan...</div>
+        <div style={{fontSize:'12px',color:'#A898B0'}}>this takes about 10 seconds</div>
+      </div>}
+
+      {mealPlan&&!loading&&<div>
+        <div style={{fontSize:'11px',color:'#A898B0',marginBottom:'12px'}}>generated {mealPlan.generated} · tap regenerate anytime</div>
+        {DAYS.map(day=>(
+          <div key={day} style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',marginBottom:'10px',overflow:'hidden'}}>
+            <div style={{background:l,padding:'10px 14px',borderBottom:'1px solid rgba(180,140,165,0.15)'}}>
+              <div style={{fontSize:'13px',fontWeight:'900',color:c,textTransform:'capitalize'}}>{day}</div>
+            </div>
+            <div style={{padding:'12px 14px'}}>
+              {mealPlan[day]&&[['🌅','breakfast',mealPlan[day].breakfast],['☀️','lunch',mealPlan[day].lunch],['🌙','dinner',mealPlan[day].dinner],['🍎','snack',mealPlan[day].snack]].map(([emoji,meal,text])=>(
+                <div key={meal} style={{display:'flex',gap:'10px',marginBottom:'8px',alignItems:'flex-start'}}>
+                  <div style={{fontSize:'15px',width:'20px',flexShrink:0}}>{emoji}</div>
+                  <div style={{flex:1}}><div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div><div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px',lineHeight:1.4}}>{text}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <button onClick={()=>setView('grocery')} style={{width:'100%',padding:'12px',borderRadius:'12px',background:'linear-gradient(135deg,#1E6E44,#52CC8A)',color:'white',fontWeight:'900',fontSize:'14px',border:'none',cursor:'pointer',marginTop:'4px'}}>view grocery list 🛒</button>
+      </div>}
+    </div>
+  )
+
+  // GROCERY VIEW
+  if(view==='grocery')return(
+    <div style={{padding:'14px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <button onClick={()=>setView('home')} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>grocery list 🛒</h2>
+        </div>
+        <div style={{fontSize:'11px',color:'#A898B0'}}>{grocery.filter(i=>i.checked).length}/{grocery.length} done</div>
+      </div>
+
+      {/* Add item */}
+      <div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'12px',marginBottom:'14px'}}>
+        <div style={{display:'flex',gap:'7px',marginBottom:'7px'}}>
+          <input value={newItem} onChange={e=>setNewItem(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addGroceryItem()} placeholder="add an item..." style={{flex:1,padding:'9px 12px',borderRadius:'10px',border:`1.5px solid ${newItem?c:'rgba(180,140,165,0.35)'}`,fontSize:'14px',outline:'none',fontFamily:'DM Sans,sans-serif'}}/>
+          <button onClick={addGroceryItem} style={{padding:'0 14px',borderRadius:'10px',background:c,color:'white',fontWeight:'700',fontSize:'13px',border:'none',cursor:'pointer'}}>add</button>
+        </div>
+        <select value={newSection} onChange={e=>setNewSection(e.target.value)} style={{width:'100%',padding:'7px 10px',borderRadius:'9px',border:'1px solid rgba(180,140,165,0.35)',fontSize:'13px',outline:'none',color:'#6B5870',fontFamily:'DM Sans,sans-serif'}}>
+          {GROCERY_SECTIONS.map(s=><option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {/* Grouped by section */}
+      {GROCERY_SECTIONS.map(section=>{
+        const items=grocery.filter(i=>i.section===section)
+        if(!items.length)return null
+        const doneCount=items.filter(i=>i.checked).length
+        return(
+          <div key={section} style={{marginBottom:'12px'}}>
+            <div style={{fontSize:'11px',fontWeight:'700',color:'#1E6E44',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>{section}</span>
+              <span style={{color:'#A898B0',fontWeight:'400'}}>{doneCount}/{items.length}</span>
+            </div>
+            <div style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.2)',overflow:'hidden'}}>
+              {items.map((item,i)=>(
+                <div key={item.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 13px',borderBottom:i<items.length-1?'1px solid rgba(180,140,165,0.12)':'none',background:item.checked?'#EDFBF3':'white',transition:'background 0.15s'}}>
+                  <div onClick={()=>toggleGrocery(item.id)} style={{width:'22px',height:'22px',borderRadius:'6px',flexShrink:0,background:item.checked?'#1E6E44':'white',border:item.checked?'none':'2px solid #A8ECC8',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all 0.2s'}}>
+                    {item.checked&&<i className="ti ti-check" style={{fontSize:'12px',color:'white'}}/>}
+                  </div>
+                  <span style={{flex:1,fontSize:'14px',color:item.checked?'#A898B0':'#1A1220',textDecoration:item.checked?'line-through':'none'}}>{item.text}</span>
+                  <button onClick={()=>removeGroceryItem(item.id)} style={{color:'#F4ADCA',background:'none',border:'none',cursor:'pointer'}}><i className="ti ti-x" style={{fontSize:'14px'}}/></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+
+      {grocery.length===0&&<div style={{textAlign:'center',padding:'40px 20px',color:'#A898B0'}}>
+        <div style={{fontSize:'32px',marginBottom:'8px'}}>🛒</div>
+        <div style={{fontSize:'14px'}}>no items yet — generate a meal plan or add items above!</div>
+      </div>}
+
+      {grocery.filter(i=>i.checked).length>0&&<button onClick={()=>save({grocery_list:grocery.filter(i=>!i.checked)})} style={{width:'100%',padding:'11px',borderRadius:'12px',border:'1.5px solid #A8ECC8',color:'#1E6E44',fontSize:'13px',fontWeight:'700',background:'#EDFBF3',cursor:'pointer',marginTop:'4px'}}>clear checked items ✓</button>}
+    </div>
+  )
+
+  // PROGRESS VIEW
+  if(view==='progress')return(
+    <div style={{padding:'14px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+          <button onClick={()=>setView('home')} style={{color:c,background:'none',border:'none',cursor:'pointer',fontSize:'20px'}}>←</button>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220'}}>my progress 📈</h2>
+        </div>
+        <button onClick={()=>setShowAddProgress(true)} style={{background:c,color:'white',borderRadius:'10px',padding:'6px 12px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer'}}>+ log</button>
+      </div>
+
+      {/* Stats */}
+      {progress.length>0&&(()=>{
+        const latest=progress[progress.length-1]
+        const weights=progress.filter(p=>p.weight)
+        const firstW=weights[0]?.weight
+        const lastW=weights[weights.length-1]?.weight
+        const diff=firstW&&lastW?Math.abs(lastW-firstW).toFixed(1):null
+        const lost=firstW&&lastW&&lastW<firstW
+        return(
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'14px'}}>
+            <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'12px',padding:'12px',textAlign:'center'}}>
+              <div style={{fontSize:'20px',fontWeight:'900',color:c}}>{progress.length}</div>
+              <div style={{fontSize:'10px',color:'#A898B0',marginTop:'2px'}}>check-ins</div>
+            </div>
+            {lastW&&<div style={{background:'#EDFBF3',border:'1px solid #A8ECC8',borderRadius:'12px',padding:'12px',textAlign:'center'}}>
+              <div style={{fontSize:'20px',fontWeight:'900',color:'#1E6E44'}}>{lastW}</div>
+              <div style={{fontSize:'10px',color:'#A898B0',marginTop:'2px'}}>current {latest.unit}</div>
+            </div>}
+            {diff&&<div style={{background:'#F3EEFF',border:'1px solid #CDB8FF',borderRadius:'12px',padding:'12px',textAlign:'center'}}>
+              <div style={{fontSize:'20px',fontWeight:'900',color:'#6B44CC'}}>{lost?'-':'+' }{diff}</div>
+              <div style={{fontSize:'10px',color:'#A898B0',marginTop:'2px'}}>{latest.unit} {lost?'lost':'gained'}</div>
+            </div>}
+          </div>
+        )
+      })()}
+
+      {/* Add progress form */}
+      {showAddProgress&&<div style={{background:'white',borderRadius:'14px',border:`1.5px solid ${c}`,padding:'14px',marginBottom:'14px'}}>
+        <div style={{fontSize:'13px',fontWeight:'700',color:'#1A1220',marginBottom:'10px'}}>log today's check-in</div>
+        <div style={{display:'flex',gap:'7px',marginBottom:'8px',alignItems:'center'}}>
+          <input value={progressWeight} onChange={e=>setProgressWeight(e.target.value)} placeholder="weight (optional)" type="number" step="0.1" style={{flex:1,padding:'9px 12px',borderRadius:'9px',border:'1.5px solid rgba(180,140,165,0.35)',fontSize:'14px',outline:'none',fontFamily:'DM Sans,sans-serif'}}/>
+          <select value={progressUnit} onChange={e=>setProgressUnit(e.target.value)} style={{padding:'9px 10px',borderRadius:'9px',border:'1px solid rgba(180,140,165,0.35)',fontSize:'13px',outline:'none',color:'#6B5870',fontFamily:'DM Sans,sans-serif'}}>
+            <option>lbs</option><option>kg</option>
+          </select>
+        </div>
+        <textarea value={progressNote} onChange={e=>setProgressNote(e.target.value)} placeholder="how are you feeling? any wins to note? 🌸" rows={2} style={{width:'100%',padding:'9px 12px',borderRadius:'9px',border:'1.5px solid rgba(180,140,165,0.35)',fontSize:'13px',resize:'none',outline:'none',fontFamily:'DM Sans,sans-serif',marginBottom:'10px'}}/>
+        <div style={{display:'flex',gap:'7px'}}>
+          <button onClick={addProgress} style={{background:c,color:'white',borderRadius:'9px',padding:'8px 18px',fontWeight:'700',fontSize:'13px',border:'none',cursor:'pointer'}}>save</button>
+          <button onClick={()=>setShowAddProgress(false)} style={{color:'#A898B0',fontSize:'13px',background:'none',border:'none',cursor:'pointer'}}>cancel</button>
+        </div>
+      </div>}
+
+      {/* Progress log */}
+      {progress.length===0&&!showAddProgress&&<div style={{textAlign:'center',padding:'40px 20px',color:'#A898B0'}}>
+        <div style={{fontSize:'32px',marginBottom:'8px'}}>📈</div>
+        <div style={{fontSize:'14px',marginBottom:'12px'}}>no check-ins yet — tap + log to start tracking!</div>
+        <div style={{fontSize:'12px',lineHeight:1.6}}>weight is totally optional — you can just log how you're feeling 🌸</div>
+      </div>}
+
+      {[...progress].reverse().map((entry,i)=>(
+        <div key={entry.id} style={{background:'white',borderRadius:'13px',border:'1px solid rgba(180,140,165,0.2)',padding:'13px 14px',marginBottom:'8px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'4px'}}>
+            <div style={{fontSize:'12px',fontWeight:'700',color:c}}>day {entry.day} · {entry.date}</div>
+            {entry.weight&&<div style={{fontSize:'13px',fontWeight:'700',color:'#1E6E44'}}>{entry.weight} {entry.unit}</div>}
+          </div>
+          {entry.note&&<div style={{fontSize:'13px',color:'#6B5870',lineHeight:1.5}}>{entry.note}</div>}
+        </div>
+      ))}
+    </div>
+  )
+
+  return null
 }
 
 // ── PROFILE MODAL ────────────────────────────────────────────────────
