@@ -10,22 +10,46 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'method not allowed' }) }
 
   try {
-    const { prefs, goals } = JSON.parse(event.body)
+    const { prefs, goals, type, meal } = JSON.parse(event.body)
 
-    const prompt = `You are a friendly nutritionist helping someone on a 75-day personal wellness challenge called "Magical Sunshine".
+    // Recipe request
+    if (type === 'recipe') {
+      const recipePrompt = `Give me a simple, clear recipe for: "${meal}"
+
+Format as JSON only:
+{
+  "name": "meal name",
+  "time": "total time",
+  "serves": "servings",
+  "ingredients": ["ingredient 1 with amount", "ingredient 2"],
+  "steps": ["step 1", "step 2", "step 3"],
+  "tip": "one helpful cooking tip"
+}`
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, messages: [{ role: 'user', content: recipePrompt }] })
+      })
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.error?.message || 'API error')
+      const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}')
+      return { statusCode: 200, headers, body: JSON.stringify(parsed) }
+    }
+
+    // Meal plan request
+    const nutritionGoals = Array.isArray(prefs.goal) ? prefs.goal.join(', ') : (prefs.goal || 'eat healthier')
+    const prompt = `You are a friendly nutritionist helping someone on a 75-day wellness challenge called "Magical Sunshine".
 
 User's details:
 - Wellness goals: ${goals || 'general wellness'}
-- Dietary preferences: ${prefs.dietary?.length ? prefs.dietary.join(', ') : 'none specified'}
+- Nutrition goals: ${nutritionGoals}
+- Dietary preferences: ${prefs.dietary?.length ? prefs.dietary.join(', ') : 'none'}
 - Allergies/restrictions: ${prefs.allergies || 'none'}
-- Nutrition goal: ${prefs.goal || 'eat healthier'}
 - Cuisine preferences: ${prefs.cuisines?.length ? prefs.cuisines.join(', ') : 'open to anything'}
 
-Generate a 7-day meal plan (Monday-Sunday) with breakfast, lunch, dinner, and one snack per day. Keep it realistic, delicious, and achievable for someone with a busy lifestyle. Make the meals feel special and nourishing, not bland diet food.
+Generate a 7-day meal plan with breakfast, lunch, dinner, and snack per day. Make meals delicious, realistic, and aligned with their goals. Also generate a grocery list by category.
 
-Also generate a consolidated grocery list organized by category.
-
-Respond ONLY with valid JSON, no extra text:
+Respond ONLY with valid JSON:
 {
   "days": {
     "monday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
@@ -48,25 +72,12 @@ Respond ONLY with valid JSON, no extra text:
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
     })
-
     const data = await resp.json()
     if (!resp.ok) throw new Error(data.error?.message || 'API error')
-
-    const text = data.content?.[0]?.text || ''
-    const clean = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(clean)
-
+    const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}')
     return { statusCode: 200, headers, body: JSON.stringify(parsed) }
   } catch (e) {
     console.error(e)
