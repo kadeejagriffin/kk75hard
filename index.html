@@ -636,19 +636,6 @@ function Today({u,me,save,checkin,groups}){
   const alreadyIn=u.last_checkin===today
   const [ok,setOk]=useState(false)
 
-  // Calculate streak
-  const streak=React.useMemo(()=>{
-    const checkins=u.checkins||{}
-    let count=0
-    const d=new Date()
-    // If not checked in today yet, start from yesterday
-    if(!checkins[d.toDateString()]){d.setDate(d.getDate()-1)}
-    while(checkins[d.toDateString()]){
-      count++
-      d.setDate(d.getDate()-1)
-    }
-    return count
-  },[u.checkins])
   const [nh,setNh]=useState('')
   const [editHabit,setEditHabit]=useState(null)
   const [editText,setEditText]=useState('')
@@ -700,11 +687,7 @@ function Today({u,me,save,checkin,groups}){
           <div style={{fontSize:'13px',fontWeight:'600',color:'#1A1220'}}>{doneCount===0?"let's get it! 💪":doneCount===total?'all done!! 🎉':'keep going ✨'}</div>
           <div style={{fontSize:'10px',color:'#A898B0',marginTop:'1px'}}>{doneCount}/{total} · day {u.day||1}</div>
         </div>
-        {streak>0&&<div style={{textAlign:'center',background:'linear-gradient(135deg,#FF6B4A22,#FFB83022)',border:'1px solid #FF6B4A44',borderRadius:'10px',padding:'5px 10px',flexShrink:0}}>
-          <div style={{fontSize:'18px',lineHeight:1}}>🔥</div>
-          <div style={{fontSize:'13px',fontWeight:'900',color:'#FF6B4A'}}>{streak}</div>
-          <div style={{fontSize:'9px',color:'#A898B0',fontWeight:'600'}}>streak</div>
-        </div>}
+
         {!alreadyIn&&doneCount>0&&<button onClick={doCheckin} style={{background:c,color:'white',borderRadius:'10px',padding:'7px 13px',fontSize:'11px',fontWeight:'700',border:'none',cursor:'pointer'}}>check in</button>}
         {alreadyIn&&<div style={{fontSize:'18px'}}>✅</div>}
       </div>
