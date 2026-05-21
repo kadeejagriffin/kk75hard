@@ -1327,9 +1327,12 @@ function Squad({u,me,groups,mkGroup,joinGroup,deleteGroup,heart,affirm,postFeed,
 
 // ── FAV ROW (swipe to delete) ─────────────────────────────────────────
 function FavRow({meal,isLast,onRecipe,onDelete,c}){
-  const [swipeX,setSwipeX]=useState(0)
-  const [startX,setStartX]=useState(null)
-  const [showDelete,setShowDelete]=useState(false)
+  const swipeState=useState(0)
+  const swipeX=swipeState[0], setSwipeX=swipeState[1]
+  const startState=useState(null)
+  const startX=startState[0], setStartX=startState[1]
+  const delState=useState(false)
+  const showDelete=delState[0], setShowDelete=delState[1]
   const threshold=60
 
   const onTouchStart=e=>{setStartX(e.touches[0].clientX)}
