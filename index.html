@@ -641,6 +641,7 @@ function Today({u,me,save,checkin,groups}){
   const [editHabit,setEditHabit]=useState(null)
   const [editText,setEditText]=useState('')
   const c=u.color||'#B5365F'
+  const l=u.color_light||'#FDF0F5'
   const habits=(u.tasks?.daily)||[]
   const mediaRule=(u.media_rules||[]).find(r=>r.day===TODAY_DAY)
   const doneCount=Object.values(done).filter(Boolean).length
