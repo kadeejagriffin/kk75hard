@@ -679,7 +679,6 @@ function Today({u,me,save,checkin,groups}){
 
   return(
     <div style={{padding:'14px'}}>
-      <div>
       <div style={{marginBottom:'16px'}}>
         <div style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220',marginBottom:'2px'}}>{dateStr}</div>
         <div style={{fontSize:'12px',color:'#A898B0'}}>here's what's on your list today</div>
@@ -708,7 +707,6 @@ function Today({u,me,save,checkin,groups}){
           <div style={{fontSize:'18px',lineHeight:1}}>✅</div>
         </div>}
       </div>
-    </div>
       {ok&&<div style={{background:'#EDFBF3',border:'1px solid #A8ECC8',borderRadius:'10px',padding:'9px 13px',marginBottom:'10px',textAlign:'center',fontSize:'13px',color:'#1E6E44',fontWeight:'600'}}>🎉 day {(u.day||2)-1} logged! keep going 🔥</div>}
 
       {Object.entries(grp).map(([cat,items])=>{
@@ -980,6 +978,7 @@ function Media({u,save}){
 
 // ── TASKS ─────────────────────────────────────────────────────────────
 function Tasks({u,save}){
+  const dateStr=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})
   const [list,setList]=useState('general')
   const [nt,setNt]=useState('')
   const [urg,setUrg]=useState(false)
@@ -1007,26 +1006,26 @@ function Tasks({u,save}){
   return(
     <div style={{padding:'14px'}}>
       <h2 style={{fontFamily:'Playfair Display,serif',fontSize:'22px',color:'#1A1220',marginBottom:'2px'}}>my tasks ✅</h2>
-      <p style={{fontSize:'12px',color:'#A898B0',marginBottom:'16px'}}>{new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p>
-      <div style={{display:'flex',gap:'6px',marginBottom:'13px'}}>
-        {[['general','to-do'],['weekly','weekly'],['daily','daily']].map(([id,lbl])=>(
-          <button key={id} onClick={()=>setList(id)} style={{flex:1,padding:'8px 5px',borderRadius:'11px',fontSize:'11px',fontWeight:'700',border:'1px solid rgba(180,140,165,0.3)',background:list===id?c:'white',color:list===id?'white':'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{lbl}</button>
+      <p style={{fontSize:'12px',color:'#A898B0',marginBottom:'16px'}}>{dateStr}</p>
+      <div style={{display:'flex',gap:'6px',marginBottom:'16px'}}>
+        {[['general','to-do'],['weekly','weekly'],['daily','daily ref']].map(([id,lbl])=>(
+          <button key={id} onClick={()=>setList(id)} style={{flex:1,padding:'9px',borderRadius:'11px',fontSize:'12px',fontWeight:'700',border:'none',background:list===id?c:'#F9F5F7',color:list===id?'white':'#6B5870',cursor:'pointer',transition:'all 0.15s',fontFamily:'DM Sans,sans-serif'}}>{lbl}</button>
         ))}
       </div>
 
       {list==='general'&&<div>
-        {urg_i.length>0&&<div style={{marginBottom:'10px'}}>
+        {urg_i.length>0&&<div style={{marginBottom:'14px'}}>
           <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
             <div style={{width:'8px',height:'8px',borderRadius:'50%',background:'#B5365F',flexShrink:0}}/>
             <span style={{fontSize:'13px',fontWeight:'700',color:'#B5365F',textTransform:'uppercase',letterSpacing:'1.2px'}}>urgent</span>
             <div style={{flex:1,height:'0.5px',background:'rgba(181,54,95,0.2)'}}/>
             <span style={{fontSize:'11px',color:'#A898B0'}}>{urg_i.length} task{urg_i.length!==1?'s':''}</span>
           </div>
-          <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(181,54,95,0.2)',overflow:'hidden'}}>
+          <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(181,54,95,0.2)',borderLeft:'3px solid #B5365F',overflow:'hidden'}}>
             {urg_i.map((t,i)=><TRow key={t.id} t={t} onT={()=>togG(t.id)} onU={()=>togU(t.id)} onR={()=>remG(t.id)} last={i===urg_i.length-1} c={c}/>)}
           </div>
         </div>}
-        {reg_i.length>0&&<div style={{marginBottom:'10px'}}>
+        {reg_i.length>0&&<div style={{marginBottom:'14px'}}>
           {urg_i.length>0&&<div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px',marginTop:'6px'}}>
             <div style={{width:'8px',height:'8px',borderRadius:'50%',background:'#A898B0',flexShrink:0}}/>
             <span style={{fontSize:'13px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'1.2px'}}>regular</span>
@@ -1037,7 +1036,7 @@ function Tasks({u,save}){
             {reg_i.map((t,i)=><TRow key={t.id} t={t} onT={()=>togG(t.id)} onU={()=>togU(t.id)} onR={()=>remG(t.id)} last={i===reg_i.length-1} c={c}/>)}
           </div>
         </div>}
-        {don_i.length>0&&<div style={{marginBottom:'10px',opacity:0.65}}>
+        {don_i.length>0&&<div style={{marginBottom:'14px',opacity:0.65}}>
           <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
             <div style={{width:'8px',height:'8px',borderRadius:'50%',background:'#1E6E44',flexShrink:0}}/>
             <span style={{fontSize:'13px',fontWeight:'700',color:'#1E6E44',textTransform:'uppercase',letterSpacing:'1.2px'}}>done today 🎉</span>
@@ -1049,47 +1048,63 @@ function Tasks({u,save}){
           </div>
         </div>}
         <div style={{display:'flex',gap:'7px',marginBottom:'8px'}}>
-          <input value={nt} onChange={e=>setNt(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addT()} placeholder="add a task..." style={{flex:1,padding:'10px 13px',borderRadius:'11px',border:`1.5px dashed ${c}88`,fontSize:'13px',outline:'none',background:l,fontFamily:'DM Sans,sans-serif'}}/>
+          <input value={nt} onChange={e=>setNt(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addT()} placeholder="add a task..." style={{flex:1,padding:'10px 13px',borderRadius:'13px',border:`1.5px dashed ${c}44`,fontSize:'13px',outline:'none',background:'#FDF8FB',fontFamily:'DM Sans,sans-serif'}}/>
           <button onClick={()=>setUrg(!urg)} style={{padding:'0 10px',borderRadius:'10px',background:urg?'rgba(181,54,95,0.1)':'transparent',border:`1px solid ${urg?'#B5365F':'rgba(180,140,165,0.3)'}`,color:urg?'#B5365F':'#A898B0',fontSize:'11px',fontWeight:'700',cursor:'pointer'}}>urgent</button>
           {nt&&<button onClick={addT} style={{padding:'0 12px',borderRadius:'10px',background:c,color:'white',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>add</button>}
         </div>
       </div>}
 
       {list==='weekly'&&<div>
-        <div style={{fontSize:'11px',color:'#A898B0',marginBottom:'9px'}}>resets every sunday 🌙</div>
+        <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
+          <div style={{width:'8px',height:'8px',borderRadius:'50%',background:'#1E6E44',flexShrink:0}}/>
+          <span style={{fontSize:'13px',fontWeight:'700',color:'#1E6E44',textTransform:'uppercase',letterSpacing:'1.2px'}}>this week</span>
+          <div style={{flex:1,height:'0.5px',background:'rgba(30,110,68,0.2)'}}/>
+          <span style={{fontSize:'11px',color:'#A898B0'}}>resets sunday</span>
+        </div>
         <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(180,140,165,0.18)',overflow:'hidden',marginBottom:'10px'}}>
           {weekly.map((t,i)=>{
             const k=weekKey()+'_'+t.id
             const wd=!!(u.weekly_done&&u.weekly_done[k])
-            return(<div key={t.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 13px',borderBottom:i<weekly.length-1?'1px solid rgba(180,140,165,0.12)':'none',background:wd?'#EDFBF3':'white'}}>
-              <div onClick={()=>togW(t.id)} style={{width:'20px',height:'20px',borderRadius:'5px',background:wd?'#1E6E44':'white',border:wd?'none':'2px solid #A8ECC8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.2s',cursor:'pointer'}}>
+            return(<div key={t.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'12px 14px',borderBottom:i<weekly.length-1?'1px solid rgba(180,140,165,0.12)':'none',background:wd?'#EDFBF3':'white'}}>
+              <div onClick={()=>togW(t.id)} style={{width:'22px',height:'22px',borderRadius:'6px',background:wd?'#1E6E44':'white',border:wd?'none':'2px solid #A8ECC8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.2s',cursor:'pointer'}}>
                 {wd&&<i className="ti ti-check" style={{fontSize:'11px',color:'white'}}/>}
               </div>
-              <span onClick={()=>togW(t.id)} style={{fontSize:'13px',color:wd?'#A898B0':'#1A1220',textDecoration:wd?'line-through':'none',flex:1,cursor:'pointer'}}>{t.text}</span>
+              <span onClick={()=>togW(t.id)} style={{fontSize:'14px',color:wd?'#A898B0':'#1A1220',textDecoration:wd?'line-through':'none',flex:1,cursor:'pointer'}}>{t.text}</span>
               <button onClick={()=>remW(t.id)} style={{color:'#A898B0',background:'none',border:'none',cursor:'pointer'}}><i className="ti ti-trash" style={{fontSize:'14px'}}/></button>
             </div>)
           })}
         </div>
         <div style={{display:'flex',gap:'7px'}}>
-          <input value={nt} onChange={e=>setNt(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addT()} placeholder="add weekly task..." style={{flex:1,padding:'10px 13px',borderRadius:'11px',border:'1.5px dashed #A8ECC8',fontSize:'13px',outline:'none',background:'#EDFBF3',fontFamily:'DM Sans,sans-serif'}}/>
+          <input value={nt} onChange={e=>setNt(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addT()} placeholder="add weekly task..." style={{flex:1,padding:'10px 13px',borderRadius:'13px',border:'1.5px dashed #A8ECC8',fontSize:'13px',outline:'none',background:'#EDFBF3',fontFamily:'DM Sans,sans-serif'}}/>
           {nt&&<button onClick={addT} style={{padding:'0 12px',borderRadius:'10px',background:'#1E6E44',color:'white',fontWeight:'700',fontSize:'12px',border:'none',cursor:'pointer'}}>add</button>}
         </div>
       </div>}
 
       {list==='daily'&&<div>
-        <div style={{background:l,border:`1px solid ${c}44`,borderRadius:'12px',padding:'11px 13px',marginBottom:'10px'}}>
-          <div style={{fontSize:'11px',fontWeight:'700',color:c,marginBottom:'3px'}}>💡 daily habits live on the today tab</div>
-          <div style={{fontSize:'11px',color:'#A898B0'}}>they auto-reset each midnight. tap ✏️ on any habit to edit it.</div>
+        <div style={{background:'#FDF0F5',border:'1px solid rgba(181,54,95,0.15)',borderRadius:'13px',padding:'12px 14px',marginBottom:'14px'}}>
+          <div style={{fontSize:'12px',fontWeight:'700',color:'#B5365F',marginBottom:'3px'}}>💡 daily habits live on the today tab</div>
+          <div style={{fontSize:'12px',color:'#A898B0',lineHeight:1.5}}>they auto-reset each midnight. tap ✏️ on the today tab to edit any habit.</div>
         </div>
-        <div style={{background:'white',borderRadius:'12px',border:'1px solid rgba(180,140,165,0.18)',overflow:'hidden'}}>
-          {daily.map((t,i)=>(
-            <div key={t.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 13px',borderBottom:i<daily.length-1?'1px solid rgba(180,140,165,0.12)':'none'}}>
-              <div style={{width:'7px',height:'7px',borderRadius:'50%',background:c,flexShrink:0}}/>
-              <span style={{fontSize:'13px',color:'#1A1220',flex:1}}>{t.text}</span>
-              <span style={{fontSize:'10px',color:c,fontWeight:'600',background:l,padding:'2px 7px',borderRadius:'10px'}}>{t.category}</span>
+        {['mindset','movement','wellness','self care','reading','custom'].map(cat=>{
+          const items=daily.filter(t=>t.category===cat)
+          if(!items.length)return null
+          const cs=CAT_STYLE[cat]||CAT_STYLE.custom
+          return(<div key={cat} style={{marginBottom:'12px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
+              <div style={{width:'8px',height:'8px',borderRadius:'50%',background:cs.tx,flexShrink:0}}/>
+              <span style={{fontSize:'13px',fontWeight:'700',color:cs.tx,textTransform:'uppercase',letterSpacing:'1.2px'}}>{cat}</span>
+              <div style={{flex:1,height:'0.5px',background:cs.br}}/>
             </div>
-          ))}
-        </div>
+            <div style={{background:'white',borderRadius:'13px',border:'0.5px solid rgba(180,140,165,0.2)',overflow:'hidden'}}>
+              {items.map((t,i)=>(
+                <div key={t.id} style={{display:'flex',alignItems:'center',gap:'10px',padding:'12px 14px',borderBottom:i<items.length-1?'1px solid rgba(180,140,165,0.12)':'none'}}>
+                  <div style={{width:'7px',height:'7px',borderRadius:'50%',background:cs.tx,flexShrink:0}}/>
+                  <span style={{fontSize:'14px',color:'#1A1220',flex:1}}>{t.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>)
+        })}
       </div>}
     </div>
   )
@@ -1322,42 +1337,6 @@ function Squad({u,me,groups,mkGroup,joinGroup,deleteGroup,heart,affirm,postFeed,
       ))}
       {msg&&<div style={{marginTop:'10px',padding:'10px',background:'#EDFBF3',borderRadius:'10px',color:'#1E6E44',fontSize:'13px',fontWeight:'600',textAlign:'center',border:'1px solid #A8ECC8'}}>{msg}</div>}
     </div>
-  )
-}
-
-// ── FAV ROW (swipe to delete) ─────────────────────────────────────────
-function FavRow({meal,isLast,onRecipe,onDelete,c}){
-  const swipeState=useState(0)
-  const swipeX=swipeState[0], setSwipeX=swipeState[1]
-  const startState=useState(null)
-  const startX=startState[0], setStartX=startState[1]
-  const delState=useState(false)
-  const showDelete=delState[0], setShowDelete=delState[1]
-  const threshold=60
-
-  const onTouchStart=e=>{setStartX(e.touches[0].clientX)}
-  const onTouchMove=e=>{
-    if(startX===null)return
-    const dx=e.touches[0].clientX-startX
-    if(dx<0)setSwipeX(Math.max(dx,-threshold))
-  }
-  const onTouchEnd=()=>{
-    if(swipeX<-threshold/2){setShowDelete(true);setSwipeX(-threshold)}
-    else{setSwipeX(0);setShowDelete(false)}
-    setStartX(null)
-  }
-
-  return(
-    <div style={{position:'relative',overflow:'hidden',borderBottom:isLast?'none':'1px solid rgba(180,140,165,0.1)'}}>
-      {showDelete&&<div style={{position:'absolute',right:0,top:0,bottom:0,width:`${threshold}px`,background:'#FF4444',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}} onClick={()=>{setShowDelete(false);setSwipeX(0);onDelete()}}>
-        <i className="ti ti-trash" style={{fontSize:'18px',color:'white'}}/>
-      </div>}
-      <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-        style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',padding:'10px 0',transform:`translateX(${swipeX}px)`,transition:startX?'none':'transform 0.2s',background:'white'}}>
-        <span style={{fontSize:'16px',flexShrink:0,color:'#B5365F'}}>♥</span>
-        <span style={{fontSize:'13px',color:'#1A1220',flex:1,lineHeight:1.4}}>{meal}</span>
-        <button onClick={onRecipe} style={{background:'#FDF0F5',color:c,border:`1px solid ${c}44`,borderRadius:'7px',padding:'4px 9px',fontSize:'10px',fontWeight:'700',cursor:'pointer',flexShrink:0}}>recipe</button>
-      </div>
     </div>
   )
 }
@@ -1650,7 +1629,14 @@ function Nourish({u,me,save}){
       {favorites.length>0&&<div style={{background:'white',borderRadius:'14px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'14px'}}>
         <div style={{fontSize:'11px',fontWeight:'700',color:'#B5365F',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px'}}>♥ saved favorites</div>
         {favorites.map((meal,i)=>(
-          <FavRow key={i} meal={meal} isLast={i===favorites.length-1} onRecipe={()=>setPendingRecipe(meal)} onDelete={()=>toggleFavorite(meal)} c={c}/>
+          <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px',padding:'10px 0',borderBottom:i<favorites.length-1?'1px solid rgba(180,140,165,0.1)':'none'}}>
+            <span style={{fontSize:'16px',flexShrink:0,color:'#B5365F'}}>♥</span>
+            <span style={{fontSize:'13px',color:'#1A1220',flex:1,lineHeight:1.4}}>{meal}</span>
+            <div style={{display:'flex',gap:'5px',flexShrink:0}}>
+              <button onClick={()=>setPendingRecipe(meal)} style={{background:'#FDF0F5',color:c,border:`1px solid ${c}44`,borderRadius:'7px',padding:'4px 9px',fontSize:'10px',fontWeight:'700',cursor:'pointer'}}>recipe</button>
+              <button onClick={()=>{if(window.confirm('remove from favorites?'))toggleFavorite(meal)}} style={{background:'#FFF0F0',color:'#FF4444',border:'1px solid rgba(255,68,68,0.2)',borderRadius:'7px',padding:'4px 8px',fontSize:'11px',cursor:'pointer'}}>✕</button>
+            </div>
+          </div>
         ))}
       </div>}
       {!mealPlan&&<div style={{background:l,border:`1px solid ${c}44`,borderRadius:'14px',padding:'16px',textAlign:'center'}}>
