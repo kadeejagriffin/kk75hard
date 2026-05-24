@@ -1318,6 +1318,7 @@ function Nourish({u,me,save}){
 
   // Preferences state
   const [dietary,setDietary]=useState(()=>u.nourish_prefs?.dietary||[])
+  const [calorieGoal,setCalorieGoal]=useState(()=>u.nourish_prefs?.calorie_goal||null)
   const [allergies,setAllergies]=useState(()=>u.nourish_prefs?.allergies||'')
   const [goals2,setGoals2]=useState(()=>u.nourish_prefs?.goal?Array.isArray(u.nourish_prefs.goal)?u.nourish_prefs.goal:[u.nourish_prefs.goal]:[])
   const [cuisines,setCuisines]=useState(()=>u.nourish_prefs?.cuisines||[])
@@ -1401,7 +1402,7 @@ function Nourish({u,me,save}){
   }
 
   const savePrefs=async()=>{
-    const updatedPrefs={dietary,allergies,goal:goals2,cuisines}
+    const updatedPrefs={dietary,allergies,goal:goals2,cuisines,calorie_goal:calorieGoal}
     await save({nourish_prefs:updatedPrefs,nourish_setup:true})
     return updatedPrefs
   }
@@ -1412,7 +1413,7 @@ function Nourish({u,me,save}){
       const resp=await fetch('/api/mealplan',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({prefs:u.nourish_prefs||{},goals:u.goals?.map(g=>g.title).join(', ')||'',nutritionGoals:(u.nourish_prefs?.goal?Array.isArray(u.nourish_prefs.goal)?u.nourish_prefs.goal.join(', '):u.nourish_prefs.goal:'')})
+        body:JSON.stringify({prefs:u.nourish_prefs||{},goals:u.goals?.map(g=>g.title).join(', ')||'',nutritionGoals:(u.nourish_prefs?.goal?Array.isArray(u.nourish_prefs.goal)?u.nourish_prefs.goal.join(', '):u.nourish_prefs.goal:''),calorieGoal:u.nourish_prefs?.calorie_goal||null,showCalories:true})
       })
       const parsed=await resp.json()
       if(!resp.ok)throw new Error(parsed.error||'generation failed')
@@ -1583,12 +1584,34 @@ function Nourish({u,me,save}){
         return(
           <div style={{background:'white',borderRadius:'16px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'14px'}}>
             <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px'}}>today's meals — {todayName}</div>
-            {[['🌅','breakfast',todayMeals.breakfast],['☀️','lunch',todayMeals.lunch],['🌙','dinner',todayMeals.dinner],['🍎','snack',todayMeals.snack]].map(([emoji,meal,text])=>(
-              <div key={meal} style={{display:'flex',gap:'10px',marginBottom:'8px',alignItems:'flex-start'}}>
-                <div style={{fontSize:'16px',width:'22px',flexShrink:0}}>{emoji}</div>
-                <div><div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div><div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px'}}>{text}</div></div>
-              </div>
-            ))}
+            {(()=>{
+              const calorieTarget=u.nourish_prefs?.calorie_goal
+              const meals=[['🌅','breakfast',todayMeals.breakfast],['☀️','lunch',todayMeals.lunch],['🌙','dinner',todayMeals.dinner],['🍎','snack',todayMeals.snack]]
+              const totalCals=meals.reduce((sum,[,,m])=>{
+                const cal=typeof m==='object'?m?.calories:null
+                return sum+(cal||0)
+              },0)
+              return(<>
+                {calorieTarget&&totalCals>0&&<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px',padding:'8px 10px',background:totalCals<=calorieTarget?'#EDFBF3':'#FDF0F5',borderRadius:'10px',border:`1px solid ${totalCals<=calorieTarget?'#A8ECC8':'rgba(181,54,95,0.2)'}`}}>
+                  <span style={{fontSize:'12px',fontWeight:'700',color:totalCals<=calorieTarget?'#1E6E44':c}}>daily total</span>
+                  <span style={{fontSize:'12px',fontWeight:'700',color:totalCals<=calorieTarget?'#1E6E44':c}}>{totalCals} / {calorieTarget} kcal</span>
+                </div>}
+                {meals.map(([emoji,meal,mealData])=>{
+                  const text=typeof mealData==='object'?mealData?.name:mealData
+                  const cals=typeof mealData==='object'?mealData?.calories:null
+                  return(
+                    <div key={meal} style={{display:'flex',gap:'10px',marginBottom:'8px',alignItems:'flex-start'}}>
+                      <div style={{fontSize:'16px',width:'22px',flexShrink:0}}>{emoji}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div>
+                        <div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px'}}>{text}</div>
+                      </div>
+                      {cals&&<div style={{fontSize:'11px',fontWeight:'700',color:c,background:l,padding:'2px 8px',borderRadius:'8px',flexShrink:0,alignSelf:'center'}}>{cals} kcal</div>}
+                    </div>
+                  )
+                })}
+              </>)
+            })()}
           </div>
         )
       })()}
@@ -1659,6 +1682,15 @@ function Nourish({u,me,save}){
             const sel=goals2.includes(g)
             return<button key={g} onClick={()=>setGoals2(p=>sel?p.filter(x=>x!==g):[...p,g])} style={{padding:'6px 12px',borderRadius:'20px',fontSize:'12px',fontWeight:'700',border:`2px solid ${sel?c:'#E0D0D8'}`,background:sel?l:'white',color:sel?c:'#6B5870',cursor:'pointer',transition:'all 0.15s'}}>{sel?'✓ ':''}{g}</button>
           })}
+        </div>
+
+        <div style={{marginTop:'16px',padding:'14px',background:l,borderRadius:'12px',border:`1px solid ${c}33`}}>
+          <div style={{fontSize:'13px',fontWeight:'700',color:'#1A1220',marginBottom:'4px'}}>daily calorie goal <span style={{fontSize:'11px',color:'#A898B0',fontWeight:'400'}}>(optional)</span></div>
+          <div style={{fontSize:'11px',color:'#A898B0',marginBottom:'8px'}}>AI will plan meals to hit your target</div>
+          <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+            <input type="number" value={calorieGoal||''} onChange={e=>setCalorieGoal(e.target.value?parseInt(e.target.value):null)} placeholder="e.g. 1800" min="1000" max="5000" style={{width:'110px',padding:'8px 12px',borderRadius:'10px',border:`1.5px solid ${c}44`,fontSize:'14px',fontWeight:'700',outline:'none',fontFamily:'DM Sans,sans-serif'}}/>
+            <span style={{fontSize:'13px',color:'#6B5870'}}>calories / day</span>
+          </div>
         </div>
       </div>
 
