@@ -95,17 +95,7 @@ Respond ONLY with valid JSON:
     const data = await resp.json()
     if (!resp.ok) throw new Error(data.error?.message || 'API error')
     const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}')
-
-    // Convert grocery to list format
-    const groceryList = []
-    if (parsed.grocery) {
-      Object.entries(parsed.grocery).forEach(([section, items]) => {
-        items.forEach(item => groceryList.push({ id: Date.now() + Math.random(), text: item, section, checked: false }))
-      })
-    }
-
-    await save({meal_plan:{...parsed.days,generated:new Date().toLocaleDateString()},grocery_list:groceryList})
-    return { statusCode: 200, headers, body: JSON.stringify({ days: parsed.days, grocery: groceryList }) }
+    return { statusCode: 200, headers, body: JSON.stringify(parsed) }
   } catch (e) {
     console.error(e)
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) }
