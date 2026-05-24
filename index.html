@@ -137,11 +137,6 @@ const Input = ({value,onChange,onEnter,placeholder,style:s={},type='text',rows,a
     : <input value={value} onChange={e=>onChange(e.target.value)} onKeyDown={e=>e.key==='Enter'&&onEnter&&onEnter()} placeholder={placeholder} type={type} style={base} autoFocus={autoFocus}/>
 }
 
-// ── HELPERS ───────────────────────────────────────────────────────────
-// Safe meal name extractor - handles both string and {name,calories} formats
-const getMeal = (m) => typeof m === 'object' && m !== null ? (m.name || '') : (m || '')
-const getMealCals = (m) => typeof m === 'object' && m !== null ? (m.calories || null) : null
-
 // ── AUTH ──────────────────────────────────────────────────────────────
 function Auth({onLogin}){
   const [name,setName]=useState('')
@@ -1332,23 +1327,7 @@ function Nourish({u,me,save}){
   // prefs initialized from useState lazy init above
 
   // Meal plan state
-  // Normalize: convert any {name,calories} objects to plain strings
-  const rawPlan=u.meal_plan||null
-  const mealPlan=rawPlan ? (()=>{
-    const out={}
-    Object.entries(rawPlan).forEach(([k,v])=>{
-      if(k==='generated'){out[k]=v;return}
-      if(v && typeof v==='object' && !Array.isArray(v)){
-        out[k]={}
-        Object.entries(v).forEach(([mk,mv])=>{
-          out[k][mk]=mv && typeof mv==='object' ? (mv.name||'') : (mv||'')
-        })
-      } else {
-        out[k]=v
-      }
-    })
-    return out
-  })() : null
+  const mealPlan=u.meal_plan||null
   const grocery=u.grocery_list||[]
   const [editGrocery,setEditGrocery]=useState(false)
   const [newItem,setNewItem]=useState('')
@@ -1388,7 +1367,7 @@ function Nourish({u,me,save}){
           type:'swap',
           day,
           meal:mealType,
-          current:getMeal(mealPlan?.[day]?.[mealType])||'',
+          current:mealPlan?.[day]?.[mealType]||'',
           prefs:u.nourish_prefs||{},
           goals:u.goals?.map(g=>g.title).join(', ')||''
         })
@@ -1605,34 +1584,12 @@ function Nourish({u,me,save}){
         return(
           <div style={{background:'white',borderRadius:'16px',border:'1px solid rgba(180,140,165,0.2)',padding:'14px',marginBottom:'14px'}}>
             <div style={{fontSize:'11px',fontWeight:'700',color:c,textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px'}}>today's meals — {todayName}</div>
-            {(()=>{
-              const calorieTarget=u.nourish_prefs?.calorie_goal
-              const meals=[['🌅','breakfast',todayMeals.breakfast],['☀️','lunch',todayMeals.lunch],['🌙','dinner',todayMeals.dinner],['🍎','snack',todayMeals.snack]]
-              const totalCals=meals.reduce((sum,[,,m])=>{
-                const cal=typeof m==='object'?m?.calories:null
-                return sum+(cal||0)
-              },0)
-              return(<>
-                {calorieTarget&&totalCals>0&&<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px',padding:'8px 10px',background:totalCals<=calorieTarget?'#EDFBF3':'#FDF0F5',borderRadius:'10px',border:`1px solid ${totalCals<=calorieTarget?'#A8ECC8':'rgba(181,54,95,0.2)'}`}}>
-                  <span style={{fontSize:'12px',fontWeight:'700',color:totalCals<=calorieTarget?'#1E6E44':c}}>daily total</span>
-                  <span style={{fontSize:'12px',fontWeight:'700',color:totalCals<=calorieTarget?'#1E6E44':c}}>{totalCals} / {calorieTarget} kcal</span>
-                </div>}
-                {meals.map(([emoji,meal,mealData])=>{
-                  const text=getMeal(mealData)
-                  const cals=getMealCals(mealData)
-                  return(
-                    <div key={meal} style={{display:'flex',gap:'10px',marginBottom:'8px',alignItems:'flex-start'}}>
-                      <div style={{fontSize:'16px',width:'22px',flexShrink:0}}>{emoji}</div>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div>
-                        <div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px'}}>{getMeal(text)}</div>
-                      </div>
-                      {cals&&<div style={{fontSize:'11px',fontWeight:'700',color:c,background:l,padding:'2px 8px',borderRadius:'8px',flexShrink:0,alignSelf:'center'}}>{cals} kcal</div>}
-                    </div>
-                  )
-                })}
-              </>)
-            })()}
+            {[['🌅','breakfast',todayMeals.breakfast],['☀️','lunch',todayMeals.lunch],['🌙','dinner',todayMeals.dinner],['🍎','snack',todayMeals.snack]].map(([emoji,meal,text])=>(
+              <div key={meal} style={{display:'flex',gap:'10px',marginBottom:'8px',alignItems:'flex-start'}}>
+                <div style={{fontSize:'16px',width:'22px',flexShrink:0}}>{emoji}</div>
+                <div><div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div><div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px'}}>{typeof text==='object'?text?.name||'':text}</div></div>
+              </div>
+            ))}
           </div>
         )
       })()}
@@ -1782,7 +1739,7 @@ function Nourish({u,me,save}){
                       </div></div>
                     <div style={{display:'flex',gap:'4px',flexShrink:0}}>
                       <button onClick={()=>{
-                        const mealName=getMeal(text)
+                        const mealName=typeof text==='object'?text?.name||'':text
                         if(favorites.includes(mealName)){
                           if(window.confirm('remove from favorites?'))toggleFavorite(mealName)
                         }else{
@@ -1790,7 +1747,7 @@ function Nourish({u,me,save}){
                         }
                       }} style={{background:favorites.includes(text)?'#FDF0F5':'transparent',color:favorites.includes(text)?'#B5365F':'#A898B0',border:'none',borderRadius:'6px',padding:'3px 5px',fontSize:'16px',cursor:'pointer',lineHeight:1}}>{favorites.includes(text)?'♥':'♡'}</button>
                       <button onClick={()=>swapMeal(day,meal)} style={{background:'#F3EEFF',color:'#6B44CC',border:'1px solid #CDB8FF',borderRadius:'8px',padding:'3px 7px',fontSize:'10px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'}}>swap</button>
-                      <button onClick={()=>setPendingRecipe(getMeal(text))} style={{background:'#FDF0F5',color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'3px 8px',fontSize:'10px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'}}>recipe</button>
+                      <button onClick={()=>setPendingRecipe(typeof text==='object'?text?.name||'':text)} style={{background:'#FDF0F5',color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'3px 8px',fontSize:'10px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'}}>recipe</button>
                     </div>
                   </div>
                 </div>
