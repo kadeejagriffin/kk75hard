@@ -11,7 +11,7 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body)
-    const { prefs, goals, type, meal, servings } = body
+    const { prefs, goals, type, meal, servings, calorieGoal, nutritionGoals } = body
 
     // Recipe request
     if (type === 'recipe') {
@@ -61,22 +61,30 @@ Respond with JSON only: {"meal": "meal name and brief description"}`
     const prompt = `You are a nutritionist helping someone on a 75-day wellness challenge called "Magical Sunshine".
 User details:
 - Wellness goals: ${goals || 'general wellness'}
-- Nutrition goals: ${nutritionGoals}
+- Nutrition goals: ${nutritionGoals || 'balanced'}
+- Daily calorie target: ${calorieGoal ? calorieGoal + ' calories total per day' : 'not specified - estimate reasonable calories'}
 - Dietary: ${prefs?.dietary?.length ? prefs.dietary.join(', ') : 'none'}
 - Allergies: ${prefs?.allergies || 'none'}
 - Cuisines: ${prefs?.cuisines?.length ? prefs.cuisines.join(', ') : 'open to anything'}
 
 Generate a 7-day meal plan with breakfast, lunch, dinner, snack per day. Also generate a grocery list by category.
-Respond ONLY with valid JSON:
+${calorieGoal ? `- Daily calorie target: ${calorieGoal} calories total across all meals` : ''}
+
+Respond ONLY with valid JSON. Each meal should be an object with "name" and "calories" fields:
 {
   "days": {
-    "monday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
-    "tuesday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
-    "wednesday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
-    "thursday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
-    "friday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
-    "saturday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
-    "sunday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."}
+    "monday": {
+      "breakfast":{"name":"oatmeal with berries","calories":350},
+      "lunch":{"name":"grilled chicken salad","calories":480},
+      "dinner":{"name":"salmon with roasted veg","calories":560},
+      "snack":{"name":"apple with almond butter","calories":200}
+    },
+    "tuesday": {"breakfast":{"name":"...","calories":0},"lunch":{"name":"...","calories":0},"dinner":{"name":"...","calories":0},"snack":{"name":"...","calories":0}},
+    "wednesday": {"breakfast":{"name":"...","calories":0},"lunch":{"name":"...","calories":0},"dinner":{"name":"...","calories":0},"snack":{"name":"...","calories":0}},
+    "thursday": {"breakfast":{"name":"...","calories":0},"lunch":{"name":"...","calories":0},"dinner":{"name":"...","calories":0},"snack":{"name":"...","calories":0}},
+    "friday": {"breakfast":{"name":"...","calories":0},"lunch":{"name":"...","calories":0},"dinner":{"name":"...","calories":0},"snack":{"name":"...","calories":0}},
+    "saturday": {"breakfast":{"name":"...","calories":0},"lunch":{"name":"...","calories":0},"dinner":{"name":"...","calories":0},"snack":{"name":"...","calories":0}},
+    "sunday": {"breakfast":{"name":"...","calories":0},"lunch":{"name":"...","calories":0},"dinner":{"name":"...","calories":0},"snack":{"name":"...","calories":0}}
   },
   "grocery": {
     "produce": ["item1"],
