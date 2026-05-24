@@ -1604,7 +1604,7 @@ function Nourish({u,me,save}){
                       <div style={{fontSize:'16px',width:'22px',flexShrink:0}}>{emoji}</div>
                       <div style={{flex:1}}>
                         <div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div>
-                        <div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px'}}>{text}</div>
+                        <div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px'}}>{typeof text==='object'?text?.name:text}</div>
                       </div>
                       {cals&&<div style={{fontSize:'11px',fontWeight:'700',color:c,background:l,padding:'2px 8px',borderRadius:'8px',flexShrink:0,alignSelf:'center'}}>{cals} kcal</div>}
                     </div>
@@ -1755,17 +1755,21 @@ function Nourish({u,me,save}){
                 <div key={meal} style={{marginBottom:'10px'}}>
                   <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
                     <div style={{fontSize:'15px',width:'20px',flexShrink:0}}>{emoji}</div>
-                    <div style={{flex:1}}><div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div><div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px',lineHeight:1.4}}>{text}</div></div>
+                    <div style={{flex:1}}><div style={{fontSize:'10px',fontWeight:'700',color:'#A898B0',textTransform:'uppercase',letterSpacing:'0.5px'}}>{meal}</div><div style={{fontSize:'13px',color:'#1A1220',marginTop:'1px',lineHeight:1.4}}>
+                        {typeof text==='object'?text?.name:text}
+                        {typeof text==='object'&&text?.calories?<span style={{fontSize:'10px',fontWeight:'700',color:c,background:l,padding:'1px 6px',borderRadius:'6px',marginLeft:'6px'}}>{text.calories} kcal</span>:null}
+                      </div></div>
                     <div style={{display:'flex',gap:'4px',flexShrink:0}}>
                       <button onClick={()=>{
-                        if(favorites.includes(text)){
-                          if(window.confirm('remove from favorites?'))toggleFavorite(text)
+                        const mealName=typeof text==='object'?text?.name:text
+                        if(favorites.includes(mealName)){
+                          if(window.confirm('remove from favorites?'))toggleFavorite(mealName)
                         }else{
-                          toggleFavorite(text)
+                          toggleFavorite(mealName)
                         }
                       }} style={{background:favorites.includes(text)?'#FDF0F5':'transparent',color:favorites.includes(text)?'#B5365F':'#A898B0',border:'none',borderRadius:'6px',padding:'3px 5px',fontSize:'16px',cursor:'pointer',lineHeight:1}}>{favorites.includes(text)?'♥':'♡'}</button>
                       <button onClick={()=>swapMeal(day,meal)} style={{background:'#F3EEFF',color:'#6B44CC',border:'1px solid #CDB8FF',borderRadius:'8px',padding:'3px 7px',fontSize:'10px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'}}>swap</button>
-                      <button onClick={()=>setPendingRecipe(text)} style={{background:'#FDF0F5',color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'3px 8px',fontSize:'10px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'}}>recipe</button>
+                      <button onClick={()=>setPendingRecipe(typeof text==='object'?text?.name:text)} style={{background:'#FDF0F5',color:c,border:`1px solid ${c}44`,borderRadius:'8px',padding:'3px 8px',fontSize:'10px',fontWeight:'700',cursor:'pointer',whiteSpace:'nowrap'}}>recipe</button>
                     </div>
                   </div>
                 </div>
