@@ -1332,7 +1332,23 @@ function Nourish({u,me,save}){
   // prefs initialized from useState lazy init above
 
   // Meal plan state
-  const mealPlan=u.meal_plan||null
+  // Normalize: convert any {name,calories} objects to plain strings
+  const rawPlan=u.meal_plan||null
+  const mealPlan=rawPlan ? (()=>{
+    const out={}
+    Object.entries(rawPlan).forEach(([k,v])=>{
+      if(k==='generated'){out[k]=v;return}
+      if(v && typeof v==='object' && !Array.isArray(v)){
+        out[k]={}
+        Object.entries(v).forEach(([mk,mv])=>{
+          out[k][mk]=mv && typeof mv==='object' ? (mv.name||'') : (mv||'')
+        })
+      } else {
+        out[k]=v
+      }
+    })
+    return out
+  })() : null
   const grocery=u.grocery_list||[]
   const [editGrocery,setEditGrocery]=useState(false)
   const [newItem,setNewItem]=useState('')
