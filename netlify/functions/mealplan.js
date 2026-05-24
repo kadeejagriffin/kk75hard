@@ -11,88 +11,103 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body)
-    const { prefs, goals, type, meal, servings, calorieGoal } = body
+    const { prefs, goals, type, meal, servings } = body
 
     // Recipe request
     if (type === 'recipe') {
       const count = servings || 2
       const prompt = `Give me a simple recipe for: "${meal}" scaled for ${count} ${count===1?'person':'people'}.
-Respond with JSON only (no markdown):
-{"name":"meal name","time":"total time","serves":"${count} people","ingredients":["item with amount"],"steps":["step 1"],"tip":"one tip"}`
+Format as JSON only:
+{
+  "name": "meal name",
+  "time": "total time",
+  "serves": "${count} ${count===1?'person':'people'}",
+  "ingredients": ["ingredient with exact amount"],
+  "steps": ["step 1", "step 2"],
+  "tip": "one helpful tip"
+}`
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, messages: [{ role: 'user', content: prompt }] })
       })
       const data = await resp.json()
-      if (!resp.ok) throw new Error(data.error?.message || 'recipe API error')
-      const text = data.content?.[0]?.text || '{}'
-      const clean = text.replace(/```json|```/g, '').trim()
-      return { statusCode: 200, headers, body: JSON.stringify(JSON.parse(clean)) }
+      if (!resp.ok) throw new Error(data.error?.message || 'API error')
+      const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}')
+      return { statusCode: 200, headers, body: JSON.stringify(parsed) }
     }
 
     // Swap single meal request
     if (type === 'swap') {
       const { day, current } = body
-      const ng = Array.isArray(prefs?.goal) ? prefs.goal.join(', ') : (prefs?.goal || 'healthy')
-      const prompt = `Suggest one alternative ${meal} for ${day} to replace: "${current}". Preferences: ${ng}, dietary: ${prefs?.dietary?.join(',')||'none'}, avoid: ${prefs?.allergies||'none'}. Respond with JSON only: {"meal":"name and description"}`
+      const nutritionGoals = Array.isArray(prefs?.goal) ? prefs.goal.join(', ') : (prefs?.goal || 'eat healthier')
+      const prompt = `Suggest ONE alternative ${meal} for ${day} to replace: "${current}"
+The person's preferences: ${nutritionGoals}, dietary: ${prefs?.dietary?.join(', ')||'none'}, avoid: ${prefs?.allergies||'none'}
+Make it different from the current meal but equally delicious and nutritious.
+Respond with JSON only: {"meal": "meal name and brief description"}`
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 200, messages: [{ role: 'user', content: prompt }] })
       })
       const data = await resp.json()
-      if (!resp.ok) throw new Error(data.error?.message || 'swap API error')
-      const text = data.content?.[0]?.text || '{}'
-      return { statusCode: 200, headers, body: JSON.stringify(JSON.parse(text.replace(/```json|```/g, '').trim())) }
+      if (!resp.ok) throw new Error(data.error?.message || 'API error')
+      const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}')
+      return { statusCode: 200, headers, body: JSON.stringify(parsed) }
     }
 
-    // Full meal plan
-    const ng = Array.isArray(prefs?.goal) ? prefs.goal.join(', ') : (prefs?.goal || 'eat healthier')
-    const calLine = calorieGoal ? `Daily calorie goal: ${calorieGoal} calories. Make meals add up to this target.` : 'Include estimated calories for each meal.'
+    // Full meal plan request
+    const nutritionGoals = Array.isArray(prefs?.goal) ? prefs.goal.join(', ') : (prefs?.goal || 'eat healthier')
+    const prompt = `You are a nutritionist helping someone on a 75-day wellness challenge called "Magical Sunshine".
+User details:
+- Wellness goals: ${goals || 'general wellness'}
+- Nutrition goals: ${nutritionGoals}
+- Dietary: ${prefs?.dietary?.length ? prefs.dietary.join(', ') : 'none'}
+- Allergies: ${prefs?.allergies || 'none'}
+- Cuisines: ${prefs?.cuisines?.length ? prefs.cuisines.join(', ') : 'open to anything'}
 
-    const prompt = `You are a nutritionist. Create a 7-day meal plan.
-Person: goals=${goals||'wellness'}, nutrition=${ng}, dietary=${prefs?.dietary?.join(',')||'none'}, allergies=${prefs?.allergies||'none'}, cuisines=${prefs?.cuisines?.join(',')||'any'}.
-${calLine}
-
-Return ONLY a JSON object (no markdown, no explanation) with this exact structure:
-{"days":{"monday":{"breakfast":{"name":"meal name","calories":300},"lunch":{"name":"meal name","calories":450},"dinner":{"name":"meal name","calories":550},"snack":{"name":"meal name","calories":150}},"tuesday":{"breakfast":{"name":"","calories":0},"lunch":{"name":"","calories":0},"dinner":{"name":"","calories":0},"snack":{"name":"","calories":0}},"wednesday":{"breakfast":{"name":"","calories":0},"lunch":{"name":"","calories":0},"dinner":{"name":"","calories":0},"snack":{"name":"","calories":0}},"thursday":{"breakfast":{"name":"","calories":0},"lunch":{"name":"","calories":0},"dinner":{"name":"","calories":0},"snack":{"name":"","calories":0}},"friday":{"breakfast":{"name":"","calories":0},"lunch":{"name":"","calories":0},"dinner":{"name":"","calories":0},"snack":{"name":"","calories":0}},"saturday":{"breakfast":{"name":"","calories":0},"lunch":{"name":"","calories":0},"dinner":{"name":"","calories":0},"snack":{"name":"","calories":0}},"sunday":{"breakfast":{"name":"","calories":0},"lunch":{"name":"","calories":0},"dinner":{"name":"","calories":0},"snack":{"name":"","calories":0}}},"grocery":{"produce":["item"],"protein":["item"],"dairy & eggs":["item"],"grains & bread":["item"],"pantry":["item"],"snacks":["item"]}}`
-
+Generate a 7-day meal plan with breakfast, lunch, dinner, snack per day. Also generate a grocery list by category.
+Respond ONLY with valid JSON:
+{
+  "days": {
+    "monday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
+    "tuesday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
+    "wednesday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
+    "thursday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
+    "friday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
+    "saturday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."},
+    "sunday": {"breakfast":"...","lunch":"...","dinner":"...","snack":"..."}
+  },
+  "grocery": {
+    "produce": ["item1"],
+    "protein": ["item1"],
+    "dairy & eggs": ["item1"],
+    "grains & bread": ["item1"],
+    "pantry": ["item1"],
+    "snacks": ["item1"]
+  }
+}`
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2000, messages: [{ role: 'user', content: prompt }] })
     })
-
     const data = await resp.json()
-    if (!resp.ok) throw new Error(data.error?.message || 'API error: ' + resp.status)
+    if (!resp.ok) throw new Error(data.error?.message || 'API error')
+    const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g, '').trim() || '{}')
 
-    const rawText = data.content?.[0]?.text || ''
-    const cleanText = rawText.replace(/```json|```/g, '').trim()
-
-    let parsed
-    try {
-      parsed = JSON.parse(cleanText)
-    } catch(parseErr) {
-      throw new Error('JSON parse failed: ' + parseErr.message + ' | Raw: ' + cleanText.substring(0, 200))
-    }
-
-    if (!parsed.days) throw new Error('No days in response. Keys: ' + Object.keys(parsed).join(','))
-
-    // Build grocery list in app format
-    const groceryList = {}
+    // Convert grocery to list format
+    const groceryList = []
     if (parsed.grocery) {
       Object.entries(parsed.grocery).forEach(([section, items]) => {
-        if (Array.isArray(items) && items.length > 0) {
-          groceryList[section] = items.map(item => ({ name: item, checked: false }))
-        }
+        items.forEach(item => groceryList.push({ id: Date.now() + Math.random(), text: item, section, checked: false }))
       })
     }
 
+    await save({meal_plan:{...parsed.days,generated:new Date().toLocaleDateString()},grocery_list:groceryList})
     return { statusCode: 200, headers, body: JSON.stringify({ days: parsed.days, grocery: groceryList }) }
-
   } catch (e) {
-    console.error('mealplan error:', e.message)
+    console.error(e)
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) }
   }
 }
