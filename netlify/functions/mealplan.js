@@ -68,7 +68,7 @@ User details:
 - Cuisines: ${prefs?.cuisines?.length ? prefs.cuisines.join(', ') : 'open to anything'}
 
 Generate a 7-day meal plan with breakfast, lunch, dinner, snack per day. Also generate a grocery list by category.
-${calorieGoal ? `- Daily calorie target: ${calorieGoal} calories total across all meals` : ''}
+
 
 Respond ONLY with valid JSON. Each meal should be an object with "name" and "calories" fields:
 {
